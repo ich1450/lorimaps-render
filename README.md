@@ -184,7 +184,7 @@ klaren Meldung ab, statt still nichts zu tun.
 - **TASVEG** (`TASVEG=1` in der Region, nur Tasmanien): Vegetation aus TASVEG 5.0 statt OSM-Wald/-Gebüsch,
   Einteilung A „Waldgefühl“ aus `render/tasveg/klassen_waldtypen.csv`:
   1 Regenwald `#4F9A57`, 2 Nasswald über Regenwald `#82BC6A`, 3 übriger Nasswald `#B6D778`,
-  4 trockener Eukalyptuswald `#D0AC54`, 5 sonstiger Wald/Sumpfwald `#9DBF57`, 6 Offenland/Hochland `#EDE8D2`,
+  4 trockener Eukalyptuswald `#D6C468`, 5 sonstiger Wald/Sumpfwald `#9DBF57`, 6 Offenland/Hochland `#EDE8D2`,
   Kulturland `#F4F0E6`, Plantagen `#DCDDC6`; Siedlungen und O-Codes (Wasser, Sand, Fels) bleiben OpenTopoMap. Lichter Wald (`FOREST_STR=Woodland`)
   fein hell schraffiert, Flächen mit auffälliger Baumart (`NOTABLE_TR`) ab Stufe 16 mit Baum-Umriss.
   Daten: Original-ZIP als Release `tasveg-data` (wird vom Workflow geladen) oder lokal über `TASVEG_SRC=…zip`.

@@ -297,7 +297,7 @@ print("patched: forest without tree symbols")
 TASVEG_COLOURS = {1: "#4F9A57",   # rainforest
                   2: "#82BC6A",   # wet forest over rainforest
                   3: "#B6D778",   # other wet forest
-                  4: "#D0AC54",   # dry eucalypt forest (light orange-khaki)
+                  4: "#D6C468",   # dry eucalypt forest (light yellow-ochre)
                   5: "#9DBF57",   # other forest / swamp forest (like other wet forest, darker)
                   6: "#EDE8D2",   # open land / highland
                   7: "#F4F0E6",   # farmland (F codes except plantations and urban)
