@@ -21,6 +21,8 @@ here = Path(__file__).resolve().parent
 mapnik_dir = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
 # EARLY_TRAILS=2: paths, tracks and trail names two zoom levels earlier (sparse areas like Tasmania)
 EARLY = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else 0
+# TASVEG=1: vegetation of Tasmania from TASVEG instead of OpenStreetMap's forest and scrub
+TASVEG = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else 0
 xml_path = mapnik_dir / "opentopomap.xml"
 xml = xml_path.read_text()
 
@@ -261,6 +263,61 @@ for name in ("landuse.xml", "landuse-over-hillshade.xml"):
         sys.exit(f"style patch failed (forest symbols in {name}): {n} instead of 3")
     fp.write_text(t)
 print("patched: forest without tree symbols")
+
+# ---------------------------------------------------------------- TASVEG vegetation instead of OSM forest (option)
+# class A "Waldgefühl" (render/tasveg/klassen_waldtypen.csv), colours agreed with the user
+TASVEG_COLOURS = {1: "#4F9A57",   # rainforest
+                  2: "#82BC6A",   # wet forest over rainforest
+                  3: "#B6D778",   # other wet forest
+                  4: "#E2EAA4",   # dry eucalypt forest
+                  5: "#A9D6C0",   # other forest / swamp forest
+                  6: "#EDE8D2"}   # open land / highland
+if TASVEG:
+    # OSM forest, wood and scrub are no longer drawn (all other land use, water etc. stay)
+    removed = 0
+    for name in ("landuse.xml", "landuse-over-hillshade.xml"):
+        fp = mapnik_dir / "styles-otm" / name
+        t = fp.read_text()
+
+        def drop(m):
+            global removed
+            f = re.search(r"<Filter>(.*?)</Filter>", m.group(0), re.S)
+            if f and ("'forest'" in f.group(1) or "[natural] = 'scrub'" in f.group(1)):
+                removed += 1
+                return ""
+            return m.group(0)
+        fp.write_text(re.sub(r"<Rule>.*?</Rule>", drop, t, flags=re.S))
+    lz = mapnik_dir / "styles-otm" / "landuse-lowzoom.xml"   # low zoom table holds forest only
+    t, n = re.subn(r'<PolygonSymbolizer fill="#b9d984" />', "", lz.read_text())
+    if removed < 8 or n != 1:
+        sys.exit(f"style patch failed (OSM forest off): {removed} rules, {n} low zoom")
+    lz.write_text(t)
+    print(f"patched: OSM forest/scrub off ({removed} rules)")
+
+    def fills(zfrom, zto):
+        lim = f"&maxscale_zoom{zfrom};" + (f"&minscale_zoom{zto};" if zto else "")
+        return "".join(f'<Rule>{lim}<Filter>[cls_a] = {k}</Filter><PolygonSymbolizer fill="{c}" gamma="0.5"/></Rule>'
+                       for k, c in TASVEG_COLOURS.items())
+
+    TV_STYLE = f"""<Style name="own-tasveg-low">{fills(5, 11)}</Style>
+<Style name="own-tasveg">{fills(12, None)}
+<Rule>&maxscale_zoom12;<Filter>[forest_str] = 'Woodland'</Filter>
+<PolygonPatternSymbolizer file="symbols-otm/tasveg_woodland_hatch.svg" alignment="global"/></Rule>
+</Style>
+<Style name="own-tasveg-trees">
+<Rule>&maxscale_zoom12;&minscale_zoom13;<Filter>[area] &gt; 200000</Filter>
+<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" transform="scale(0.8)"/></Rule>
+<Rule>&maxscale_zoom14;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg"/></Rule>
+</Style>"""
+    tv_layers = "\n".join([
+        TV_STYLE,
+        layer("own-tasveg-low", ["own-tasveg-low"], "(SELECT way, cls_a FROM tasveg_low) AS tv"),
+        layer("own-tasveg", ["own-tasveg"], "(SELECT way, cls_a, forest_str FROM tasveg) AS tv"),
+    ])
+    # above OSM land use, below the hillshade and everything else
+    xml = patch("\n\t&hillshade;", "\n" + tv_layers + "\n\t&hillshade;", "TASVEG vegetation layer")
+    trees = layer("own-tasveg-trees", ["own-tasveg-trees"], "(SELECT way, area, notable_tr FROM tasveg_notable) AS tvt")
+    xml = patch("</Map>", trees + "\n</Map>", "TASVEG notable trees")
 
 # ---------------------------------------------------------------- 5+6) camp sites, locked gates (on top)
 CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 'camp_site'

@@ -140,7 +140,9 @@ def main():
         "type": "baselayer",
         "version": "1",
         "description": f"OpenTopoMap style, {256 * args.scale} px tiles, magnify {args.magnify}",
-        "attribution": "Kartendaten: © OpenStreetMap-Mitwirkende, Copernicus DEM (© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA) | Kartendarstellung: © OpenTopoMap (CC-BY-SA)",
+        "attribution": "Kartendaten: © OpenStreetMap-Mitwirkende, Copernicus DEM (© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA)"
+                       + (" | Vegetation: TASVEG 5.0 from www.theLIST.tas.gov.au ©State of Tasmania (CC BY 3.0 AU)" if os.environ.get("TASVEG") == "1" else "")
+                       + " | Kartendarstellung: © OpenTopoMap (CC-BY-SA)",
         "bounds": f"{w},{s},{e},{n}",
         "center": f"{(w + e) / 2},{(s + n) / 2},{min(args.maxzoom, 12)}",
         "minzoom": str(args.minzoom),

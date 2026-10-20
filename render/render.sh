@@ -16,6 +16,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 USER="${USER:-$(id -un)}"   # not set in Docker
 source "$HERE/region.env"
+export TASVEG="${TASVEG:-0}"
 WORK="${WORK:-$HOME/work}"
 OTM="$WORK/OpenTopoMap"
 DEM="$OTM/mapnik/dem"
@@ -57,7 +58,7 @@ else
   git clone -q --depth 1 https://github.com/der-stefan/OpenTopoMap "$OTM"
 fi
 git -C "$OTM" log -1 --format='OpenTopoMap commit %H (%cd)'
-python3 "$HERE/customize_style.py" "$OTM/mapnik" "${EARLY_TRAILS:-0}"
+python3 "$HERE/customize_style.py" "$OTM/mapnik" "${EARLY_TRAILS:-0}" "${TASVEG:-0}"
 mkdir -p "$DEM" "$DATA"
 
 # ---------------------------------------------------------------- database
@@ -100,6 +101,12 @@ ls -la region.osm.pbf
 step "Importing OSM data (osm2pgsql)"
 osm2pgsql --slim -d gis -C 4000 --number-processes 4 \
   --style "$OTM/mapnik/osm2pgsql/opentopomap.style" region.osm.pbf
+
+# ---------------------------------------------------------------- TASVEG vegetation (Tasmania, option)
+if [ "${TASVEG:-0}" = 1 ]; then
+  step "Importing TASVEG vegetation"
+  bash "$HERE/tasveg/import_tasveg.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
+fi
 
 # ---------------------------------------------------------------- DEM
 step "Downloading Copernicus GLO-30 DEM"

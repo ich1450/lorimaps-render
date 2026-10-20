@@ -179,6 +179,14 @@ klaren Meldung ab, statt still nichts zu tun.
 - **Öffentliche Parkplätze** ab z14.
 - **`EARLY_TRAILS=2`**: Pfade und Tracks erscheinen zwei Zoomstufen früher (z12 statt z14,
   Tracks grade1/2 ab z11), leicht dünner.
+- **TASVEG** (`TASVEG=1` in der Region, nur Tasmanien): Vegetation aus TASVEG 5.0 statt OSM-Wald/-Gebüsch,
+  Einteilung A „Waldgefühl“ aus `render/tasveg/klassen_waldtypen.csv`:
+  1 Regenwald `#4F9A57`, 2 Nasswald über Regenwald `#82BC6A`, 3 übriger Nasswald `#B6D778`,
+  4 trockener Eukalyptuswald `#E2EAA4`, 5 sonstiger Wald/Sumpfwald `#A9D6C0`, 6 Offenland/Hochland `#EDE8D2`;
+  F- und O-Codes (Kulturland, Wasser, Fels) ohne Farbe, dort bleibt OpenTopoMap. Lichter Wald (`FOREST_STR=Woodland`)
+  fein weiss schraffiert, Flächen mit auffälliger Baumart (`NOTABLE_TR`) mit Baumsymbol.
+  Daten: Original-ZIP als Release `tasveg-data` (wird vom Workflow geladen) oder lokal über `TASVEG_SRC=…zip`.
+  Quelle: TASVEG 5.0 from www.theLIST.tas.gov.au ©State of Tasmania (CC BY 3.0 AU).
 - Zusätzlich importierte OSM-Schlüssel: `locked`, `4wd_only`, `smoothness`, `motor_vehicle`.
 
 ---

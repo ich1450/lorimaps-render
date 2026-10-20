@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="11" height="13" viewBox="0 0 11 13">
+  <!-- small tree: notable tree species in this vegetation patch -->
+  <rect x="4.6" y="8.5" width="1.8" height="4" fill="#5b3a1e"/>
+  <circle cx="5.5" cy="5.5" r="4.6" fill="#1f5f2a" stroke="#ffffff" stroke-width="0.9"/>
+</svg>
