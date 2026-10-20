@@ -111,6 +111,30 @@ for zmax, zmin, old_w, w2, w3, d4, w5, d5, old_d5 in (
            rf'\g<1><LineSymbolizer stroke="black" stroke-width="{w5}" stroke-dasharray="{d5}" />',
            f"zoom {zmax}: grade5")
 
+# paths on zoom 14 (and the earlier levels copied from it) dotted like on zoom 15+, not dashed
+DOTS = {"1.6,1.6": "1.1,2", "1.6,1.6,1.6,1.6,1.6,4.5": "1.1,2,1.1,2,1.1,6", "1.6,1.6,1.6,5": "1.1,2,1.1,8"}
+dotted = 0
+
+
+def path_dots(m):
+    global dotted
+    block = m.group(0)
+    if re.search(r"&maxscale_zoom14;\s*&minscale_zoom14;", block) and ("'path'" in block or "'footway'" in block):
+        def sub(d):
+            global dotted
+            if d.group(1) in DOTS:
+                dotted += 1
+                return f'stroke-dasharray="{DOTS[d.group(1)]}"'
+            return d.group(0)
+        block = re.sub(r'stroke-dasharray="([0-9.,]+)"', sub, block)
+    return block
+
+
+rc = re.sub(r"<Rule>.*?</Rule>", path_dots, rc, flags=re.S)
+if dotted < 5:
+    sys.exit(f"style patch failed (dotted paths): only {dotted} dash patterns found")
+print(f"patched: paths on zoom 14 dotted ({dotted} rules)")
+
 # paths and tracks two zoom levels earlier (option), slightly thinner on the extra levels
 if EARLY:
     def scaled(block, factor, zmax, zmin):
@@ -167,7 +191,7 @@ FADED_STYLE = f"""<Style name="own-faded-ways">
 <Rule>&maxscale_zoom{FADED_FROM};<Filter>[highway] = 'track'</Filter>
 <LineSymbolizer stroke="{GREY}" stroke-width="1.2"/></Rule>
 <Rule>&maxscale_zoom{FADED_FROM};<Filter>[highway] != 'track' and [highway] != 'steps'</Filter>
-<LineSymbolizer stroke="{GREY}" stroke-width="0.9" stroke-dasharray="1.6,1.6"/></Rule>
+<LineSymbolizer stroke="{GREY}" stroke-width="0.9" stroke-dasharray="1.1,2"/></Rule>
 <Rule>&maxscale_zoom15;<Filter>[highway] = 'steps'</Filter>
 <LineSymbolizer stroke="{GREY}" stroke-width="2.5" stroke-dasharray="1,1.5"/></Rule>
 </Style>
@@ -209,19 +233,31 @@ if n != 2:
 sr_path.write_text(sr)
 print("patched: public parking from zoom 14")
 
-# ---------------------------------------------------------------- trail names from zoom 14
+# ---------------------------------------------------------------- trail and minor road names from zoom 14
+# (OpenTopoMap: from zoom 16). "spacing" repeats the name along long ways.
 rn_path = mapnik_dir / "styles-otm" / "road-names-text.xml"
 rn = rn_path.read_text()
-TRAILS = "[highway] = 'path' or [highway] = 'footway' or [highway] = 'bridleway' or [highway] = 'track'"
+TRAILS = " or ".join(f"[highway] = '{h}'" for h in (
+    "path", "footway", "bridleway", "track", "cycleway", "steps",
+    "tertiary", "tertiary_link", "unclassified", "residential", "service", "living_street", "road"))
 trail_rules = "".join(
     f"<Rule>&maxscale_zoom{z};&minscale_zoom{z};<Filter>{TRAILS}</Filter>"
     f'<TextSymbolizer fontset-name="sans-condensed" size="{size}" fill="black" halo-radius="1.5" halo-fill="rgba(255,255,255,0.8)" '
-    f'repeat-distance="{rep}" placement="line" max-char-angle-delta="25">[name]</TextSymbolizer></Rule>'
+    f'repeat-distance="{rep}" spacing="{rep}" placement="line" max-char-angle-delta="40">[name]</TextSymbolizer></Rule>'
     for z, size, rep in (((13, 8, 350),) if EARLY else ()) + ((14, 9, 300), (15, 10, 220)))
 if "<!-- zoom 15 -->" not in rn:
     sys.exit("style patch failed (trail names): original text not found")
 rn_path.write_text(rn.replace("<!-- zoom 15 -->", trail_rules + "\n\t<!-- zoom 15 -->", 1))
 print("patched: trail names from zoom 14")
+
+# ---------------------------------------------------------------- forest: only green, no tree symbols
+for name in ("landuse.xml", "landuse-over-hillshade.xml"):
+    fp = mapnik_dir / "styles-otm" / name
+    t, n = re.subn(r'\s*<PolygonPatternSymbolizer file="symbols-otm/forest[^"]*"[^>]*/>', "", fp.read_text())
+    if n != 3:
+        sys.exit(f"style patch failed (forest symbols in {name}): {n} instead of 3")
+    fp.write_text(t)
+print("patched: forest without tree symbols")
 
 # ---------------------------------------------------------------- 5+6) camp sites, locked gates (on top)
 CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 'camp_site'

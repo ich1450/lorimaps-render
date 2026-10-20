@@ -173,7 +173,9 @@ klaren Meldung ab, statt still nichts zu tun.
   `access=no/private` (ohne Fussgänger-Freigabe) hellgrau `#b4b4b4`, sonst keine Markierung.
 - **Zeltplätze**: grünes Symbol ab z11, ab z13 gross mit grünem fettem Namen.
 - **Verschlossene Tore/Schranken** (`locked=yes`): rote „Durchfahrt verboten“-Scheibe ab z13.
-- **Trail-Namen** ab z14 (mit `EARLY_TRAILS=2` ab z13).
+- **Namen von Pfaden, Tracks und Nebenstrassen** (tertiary, unclassified, residential, service …) ab z14 (mit `EARLY_TRAILS=2` ab z13), bei langen Wegen mehrfach wiederholt.
+- **Pfade** auch auf z14 und früher gepunktet (wie OTM ab z15), nicht gestrichelt.
+- **Wald** nur grün, ohne Baumsymbole.
 - **Öffentliche Parkplätze** ab z14.
 - **`EARLY_TRAILS=2`**: Pfade und Tracks erscheinen zwei Zoomstufen früher (z12 statt z14,
   Tracks grade1/2 ab z11), leicht dünner.
