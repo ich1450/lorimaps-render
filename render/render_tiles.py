@@ -57,7 +57,7 @@ def init_worker(args):
     _map = mapnik.Map(px, px)
     mapnik.load_map(_map, args.style)
     # larger symbols and labels need a wider margin, otherwise they are cut at tile edges
-    _map.buffer_size = max(_map.buffer_size, 128) * args.magnify
+    _map.buffer_size = int(max(_map.buffer_size, 128) * args.magnify)
 
 
 def render(tile):
@@ -156,6 +156,8 @@ def main():
     zoom_time = {}
     last = time.time()
     first_error = None
+    # load the style once here: an error in the worker initializer would make the pool restart workers forever
+    init_worker(args)
     with mp.Pool(args.processes, initializer=init_worker, initargs=(args,)) as pool:
         for z, x, y, data, err in pool.imap_unordered(render, tiles, chunksize=8):
             done += 1

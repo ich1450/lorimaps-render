@@ -38,7 +38,7 @@ def main():
     px = 256 * args.scale
     m = mapnik.Map(px, px)
     mapnik.load_map(m, args.style)
-    m.buffer_size = max(m.buffer_size, 128) * args.magnify
+    m.buffer_size = int(max(m.buffer_size, 128) * args.magnify)
     factor = float(args.scale * args.magnify)
 
     tiles = []
