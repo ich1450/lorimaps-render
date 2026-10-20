@@ -145,7 +145,12 @@ done
 gdal_contour -q -a ele -i 10 -f GPKG warp-30.tif "$WORK/contours.gpkg"
 ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/contours.gpkg" -nln contours -a_srs EPSG:3857 \
   -lco GEOMETRY_NAME=way -nlt LINESTRING -explodecollections -overwrite
-psql -q -d contours -c "ALTER TABLE contours ALTER COLUMN ele TYPE integer USING round(ele)::integer; DELETE FROM contours WHERE ST_Length(way) < 20; ANALYZE contours;"
+psql -q -d contours -c "ALTER TABLE contours ALTER COLUMN ele TYPE integer USING round(ele)::integer; DELETE FROM contours WHERE ST_Length(way) < 20;"
+# contour lines from gdal_contour are very long (whole mountain sides, 100 000+ points) and every tile
+# fetched them completely: 90-97 % of the render time. Split into pieces of at most 256 points.
+psql -q -d contours -c "CREATE TABLE contours_split AS SELECT ele, ST_Subdivide(way, 256) AS way FROM contours;
+  DROP TABLE contours; ALTER TABLE contours_split RENAME TO contours;
+  CREATE INDEX contours_way ON contours USING gist (way); ANALYZE contours;"
 psql -d contours -t -c "SELECT 'contour lines: ' || count(*) FROM contours;"
 ls -la "$DEM"
 
