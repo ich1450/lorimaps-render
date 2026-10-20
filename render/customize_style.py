@@ -235,6 +235,14 @@ if n != 2:
 sr_path.write_text(sr)
 print("patched: public parking from zoom 14")
 
+# ---------------------------------------------------------------- contour numbers without the light halo
+ct_path = mapnik_dir / "styles-otm" / "contours.xml"
+ct, n = re.subn(r'halo-radius="[0-9.]+"', 'halo-radius="0"', ct_path.read_text())
+if n < 2:
+    sys.exit(f"style patch failed (contour label halo): {n} matches")
+ct_path.write_text(ct)
+print(f"patched: contour numbers without halo ({n} rules)")
+
 # ---------------------------------------------------------------- notable single trees (OSM natural=tree with name,
 # landmark or natural monument) from zoom 12 instead of 14 (with MAGNIFY=2 they appear from zoom 13)
 s2_path = mapnik_dir / "styles-otm" / "symbols-2.xml"
@@ -278,7 +286,7 @@ print("patched: forest without tree symbols")
 TASVEG_COLOURS = {1: "#4F9A57",   # rainforest
                   2: "#82BC6A",   # wet forest over rainforest
                   3: "#B6D778",   # other wet forest
-                  4: "#D2C88A",   # dry eucalypt forest (light khaki)
+                  4: "#CCB47A",   # dry eucalypt forest (light orange-brown khaki)
                   5: "#9DBF57",   # other forest / swamp forest (like other wet forest, darker)
                   6: "#EDE8D2",   # open land / highland
                   7: "#F4F0E6",   # farmland (F codes except plantations and urban)
@@ -316,9 +324,7 @@ if TASVEG:
 <PolygonPatternSymbolizer file="symbols-otm/tasveg_woodland_hatch.svg" alignment="global"/></Rule>
 </Style>
 <Style name="own-tasveg-trees">
-<Rule>&maxscale_zoom12;&minscale_zoom13;<Filter>[area] &gt; 200000</Filter>
-<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" transform="scale(0.8)" allow-overlap="true"/></Rule>
-<Rule>&maxscale_zoom14;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" allow-overlap="true"/></Rule>
+<Rule>&maxscale_zoom13;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" allow-overlap="true"/></Rule>
 </Style>"""
     tv_layers = "\n".join([
         TV_STYLE,

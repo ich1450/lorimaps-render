@@ -75,10 +75,12 @@ ANALYZE tasveg; ANALYZE tasveg_low; ANALYZE tasveg_notable;
 SQL
 psql -d gis -At -c "SELECT 'TASVEG pieces by class A: ' || string_agg(cls_a || '=' || n, ', ') FROM (SELECT cls_a, count(*) n FROM tasveg GROUP BY 1 ORDER BY 1) t;"
 # example spots for the check images of the workflow (largest open woodland, largest patch with a notable tree)
-psql -d gis -At -F';' > "$WORK/tasveg/sample_points.txt" <<'SQL'
+INNER="ST_Transform(ST_Expand(ST_MakeEnvelope($W,$S,$E,$N,4326), -0.06), 3857)"   # inside the map area
+psql -d gis -At -F';' > "$WORK/tasveg/sample_points.txt" <<SQL
 SELECT 'woodland', ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(ST_PointOnSurface(way),4326) p FROM tasveg_raw
-  WHERE forest_str = 'Woodland' ORDER BY ST_Area(way) DESC LIMIT 1) t;
-SELECT 'tree', ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(way,4326) p FROM tasveg_notable ORDER BY area DESC LIMIT 1) t;
+  WHERE forest_str = 'Woodland' AND ST_Intersects(ST_PointOnSurface(way), $INNER) ORDER BY ST_Area(way) DESC LIMIT 1) t;
+SELECT 'tree', ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(way,4326) p FROM tasveg_notable
+  WHERE ST_Intersects(way, $INNER) ORDER BY area DESC LIMIT 1) t;
 SQL
 cat "$WORK/tasveg/sample_points.txt"
 psql -d gis -At -c "SELECT 'woodland pieces: ' || count(*) FILTER (WHERE forest_str = 'Woodland') || ', notable tree points: ' || (SELECT count(*) FROM tasveg_notable) FROM tasveg;"
