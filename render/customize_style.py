@@ -235,6 +235,15 @@ if n != 2:
 sr_path.write_text(sr)
 print("patched: public parking from zoom 14")
 
+# ---------------------------------------------------------------- notable single trees (OSM natural=tree with name,
+# landmark or natural monument) from zoom 12 instead of 14 (with MAGNIFY=2 they appear from zoom 13)
+s2_path = mapnik_dir / "styles-otm" / "symbols-2.xml"
+s2, n = re.subn(r"&maxscale_zoom14;(\s*&minscale_zoom17;\s*<Filter>\(\(\[natural\] = 'tree'\))", r"&maxscale_zoom12;\1", s2_path.read_text())
+if n != 2:
+    sys.exit(f"style patch failed (notable trees zoom): {n} matches instead of 2")
+s2_path.write_text(s2)
+print("patched: notable single trees from zoom 12")
+
 # ---------------------------------------------------------------- trail and minor road names from zoom 14
 # (OpenTopoMap: from zoom 16). "spacing" repeats the name along long ways.
 rn_path = mapnik_dir / "styles-otm" / "road-names-text.xml"
