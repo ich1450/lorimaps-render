@@ -54,6 +54,10 @@ psql -q -d gis -f classes.sql
 
 psql -q -d gis <<'SQL'
 DROP TABLE IF EXISTS tasveg, tasveg_low, tasveg_notable;
+-- class A from the table; F codes (left out there) drawn as 7 farmland / 8 plantations,
+-- urban areas (FUR, FUM) and O codes (water, sand, rock) stay with OpenStreetMap
+UPDATE tasveg_class SET cls_a = CASE WHEN code IN ('FPH','FPS','FPU') THEN 8 ELSE 7 END
+  WHERE cls_a = 0 AND code LIKE 'F%' AND code NOT IN ('FUR','FUM');
 CREATE TABLE tasveg AS
   SELECT c.cls_a, c.cls_b, r.vegcode, COALESCE(r.forest_str, '') AS forest_str, ST_Subdivide(r.way, 256) AS way
   FROM tasveg_raw r JOIN tasveg_class c ON c.code = r.vegcode WHERE c.cls_a > 0;
@@ -70,4 +74,11 @@ CREATE INDEX tasveg_notable_way ON tasveg_notable USING gist (way);
 ANALYZE tasveg; ANALYZE tasveg_low; ANALYZE tasveg_notable;
 SQL
 psql -d gis -At -c "SELECT 'TASVEG pieces by class A: ' || string_agg(cls_a || '=' || n, ', ') FROM (SELECT cls_a, count(*) n FROM tasveg GROUP BY 1 ORDER BY 1) t;"
+# example spots for the check images of the workflow (largest open woodland, largest patch with a notable tree)
+psql -d gis -At -F';' > "$WORK/tasveg/sample_points.txt" <<'SQL'
+SELECT 'woodland', ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(ST_PointOnSurface(way),4326) p FROM tasveg_raw
+  WHERE forest_str = 'Woodland' ORDER BY ST_Area(way) DESC LIMIT 1) t;
+SELECT 'tree', ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(way,4326) p FROM tasveg_notable ORDER BY area DESC LIMIT 1) t;
+SQL
+cat "$WORK/tasveg/sample_points.txt"
 psql -d gis -At -c "SELECT 'woodland pieces: ' || count(*) FILTER (WHERE forest_str = 'Woodland') || ', notable tree points: ' || (SELECT count(*) FROM tasveg_notable) FROM tasveg;"

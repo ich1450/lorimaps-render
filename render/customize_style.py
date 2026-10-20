@@ -269,9 +269,11 @@ print("patched: forest without tree symbols")
 TASVEG_COLOURS = {1: "#4F9A57",   # rainforest
                   2: "#82BC6A",   # wet forest over rainforest
                   3: "#B6D778",   # other wet forest
-                  4: "#E2EAA4",   # dry eucalypt forest
-                  5: "#A9D6C0",   # other forest / swamp forest
-                  6: "#EDE8D2"}   # open land / highland
+                  4: "#D2C88A",   # dry eucalypt forest (light khaki)
+                  5: "#9DBF57",   # other forest / swamp forest (like other wet forest, darker)
+                  6: "#EDE8D2",   # open land / highland
+                  7: "#F4F0E6",   # farmland (F codes except plantations and urban)
+                  8: "#DCDDC6"}   # plantations
 if TASVEG:
     # OSM forest, wood and scrub are no longer drawn (all other land use, water etc. stay)
     removed = 0
@@ -306,8 +308,8 @@ if TASVEG:
 </Style>
 <Style name="own-tasveg-trees">
 <Rule>&maxscale_zoom12;&minscale_zoom13;<Filter>[area] &gt; 200000</Filter>
-<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" transform="scale(0.8)"/></Rule>
-<Rule>&maxscale_zoom14;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg"/></Rule>
+<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" transform="scale(0.8)" allow-overlap="true"/></Rule>
+<Rule>&maxscale_zoom14;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" allow-overlap="true"/></Rule>
 </Style>"""
     tv_layers = "\n".join([
         TV_STYLE,

@@ -82,19 +82,54 @@ if [ "${SKIP_DATA:-0}" != 1 ]; then
 # ---------------------------------------------------------------- OSM data
 step "Downloading and clipping OSM data"
 cd "$WORK"
-parts=()
-i=0
-for url in $PBF_URLS; do
-  i=$((i+1))
-  curl -fsSL --retry 3 -o "src$i.osm.pbf" "$url"
-  osmium extract -s smart -b "$BW,$BS,$BE,$BN" "src$i.osm.pbf" -o "part$i.osm.pbf" --overwrite
-  rm "src$i.osm.pbf"
-  parts+=("part$i.osm.pbf")
-done
-if [ ${#parts[@]} -gt 1 ]; then
-  osmium merge "${parts[@]}" -o region.osm.pbf --overwrite
-else
-  mv "${parts[0]}" region.osm.pbf
+# On GitHub the clipped extract is kept in the release "osm-cache" and reused for up to 7 days
+# (downloading all of Australia from Geofabrik is the slowest step of a small render).
+CACHE_KEY=$(echo "$BW $BS $BE $BN $PBF_URLS" | md5sum | cut -c1-10)
+CACHED=""
+if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  export GH_TOKEN="$GITHUB_TOKEN"
+  CACHED=$(gh release view osm-cache -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null \
+    | grep "^osm-$CACHE_KEY-" | sort | tail -1 || true)
+  if [ -n "$CACHED" ]; then
+    day=$(echo "$CACHED" | sed -E 's/.*-([0-9]{8})\.osm\.pbf/\1/')
+    age=$(( ( $(date -u +%s) - $(date -u -d "$day" +%s) ) / 86400 ))
+    if [ "$age" -le 7 ]; then
+      sub "using cached OSM extract $CACHED ($age days old)"
+      gh release download osm-cache -R "$GITHUB_REPOSITORY" -p "$CACHED" -O region.osm.pbf --clobber || CACHED=""
+    else
+      sub "cached OSM extract $CACHED is $age days old, downloading new data"
+      CACHED=""
+    fi
+  fi
+fi
+if [ -z "$CACHED" ]; then
+  parts=()
+  i=0
+  for url in $PBF_URLS; do
+    i=$((i+1))
+    curl -fsSL --retry 3 -o "src$i.osm.pbf" "$url"
+    osmium extract -s smart -b "$BW,$BS,$BE,$BN" "src$i.osm.pbf" -o "part$i.osm.pbf" --overwrite
+    rm "src$i.osm.pbf"
+    parts+=("part$i.osm.pbf")
+  done
+  if [ ${#parts[@]} -gt 1 ]; then
+    osmium merge "${parts[@]}" -o region.osm.pbf --overwrite
+  else
+    mv "${parts[0]}" region.osm.pbf
+  fi
+  if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+    name="osm-$CACHE_KEY-$(date -u +%Y%m%d).osm.pbf"
+    cp region.osm.pbf "$name"
+    gh release view osm-cache -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+      || gh release create osm-cache -R "$GITHUB_REPOSITORY" --latest=false --title "OSM cache" \
+           --notes "Clipped OpenStreetMap extracts reused by the render workflow for up to 7 days (© OpenStreetMap contributors, ODbL)." \
+      || true
+    gh release upload osm-cache -R "$GITHUB_REPOSITORY" "$name" --clobber || echo "WARN: cache upload failed"
+    for old in $(gh release view osm-cache -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep "^osm-$CACHE_KEY-" | grep -v "^$name$" || true); do
+      gh release delete-asset osm-cache "$old" -R "$GITHUB_REPOSITORY" -y || true
+    done
+    rm -f "$name"
+  fi
 fi
 ls -la region.osm.pbf
 
@@ -275,5 +310,7 @@ else
     --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
 fi
 
+# example spots (TASVEG) for the check images of the workflow
+[ -f "$WORK/tasveg/sample_points.txt" ] && cp "$WORK/tasveg/sample_points.txt" "$OUT/samples-$NAME-otm.txt"
 ls -laR "$OUT"
 step "Done"

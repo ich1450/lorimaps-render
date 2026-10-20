@@ -71,6 +71,7 @@ jobs:
           name: part-${{ matrix.shard }}
           path: |
             out/*.mbtiles
+            out/*.txt
             out/preview/*.jpg
           retention-days: 3
           compression-level: 0
@@ -131,13 +132,21 @@ jobs:
           db = sqlite3.connect(f)
           w, s, e, nn = map(float, db.execute("SELECT value FROM metadata WHERE name='bounds'").fetchone()[0].split(","))
           lon, lat = (w + e) / 2, (s + nn) / 2
-          for z in (10, 12, 13, 14, 15, 16, 17):
-              t = 2 ** z
-              x = int((lon + 180) / 360 * t)
-              y = int((1 - math.log(math.tan(math.radians(lat)) + 1 / math.cos(math.radians(lat))) / math.pi) / 2 * t)
-              row = db.execute("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?", (z, x, t - 1 - y)).fetchone()
-              if row:
-                  Image.open(io.BytesIO(row[0])).save(f"logs/sample-{n}-z{z}.png")
+          import os
+          spots = [("", lat, lon, (10, 12, 13, 14, 15, 16, 17))]
+          if os.path.exists(f"parts/samples-{n}.txt"):
+              for line in open(f"parts/samples-{n}.txt"):
+                  p = line.strip().split(";")
+                  if len(p) == 3 and p[1]:
+                      spots.append((p[0] + "-", float(p[1]), float(p[2]), (13, 14, 15)))
+          for tag, la, lo, zooms in spots:
+              for z in zooms:
+                  t = 2 ** z
+                  x = int((lo + 180) / 360 * t)
+                  y = int((1 - math.log(math.tan(math.radians(la)) + 1 / math.cos(math.radians(la))) / math.pi) / 2 * t)
+                  row = db.execute("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?", (z, x, t - 1 - y)).fetchone()
+                  if row:
+                      Image.open(io.BytesIO(row[0])).save(f"logs/sample-{n}-{tag}z{z}.png")
           EOF
           done
 
