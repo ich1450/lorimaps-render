@@ -72,7 +72,11 @@ def main():
             l.active = False
         layer.active = True
         t = render_all()
-        results.append((t, layer.name, layer.datasource.params().get("type", "?") if layer.datasource else "?"))
+        try:
+            typ = str(layer.datasource.params()["type"])
+        except Exception:
+            typ = "?"
+        results.append((t, layer.name, typ))
         print(f"  {layer.name}: {t:.1f} s", flush=True)
     for l, a in zip(layers, active):
         l.active = a
