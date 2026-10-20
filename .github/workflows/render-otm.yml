@@ -14,7 +14,7 @@ permissions:
 
 concurrency:
   group: render
-  cancel-in-progress: true
+  cancel-in-progress: false   # a new push waits for the running render instead of cancelling it
 
 jobs:
   plan:

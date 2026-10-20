@@ -196,7 +196,26 @@ fi
 
 # ---------------------------------------------------------------- render
 cd "$OTM/mapnik"
-if [ "${MODE:-tiles}" = "preview" ]; then
+if [ "${MODE:-tiles}" = "profile" ]; then
+  step "Measuring render time per layer"
+  [ -n "${FONT:-}" ] && python3 "$HERE/render_preview.py" --style opentopomap.xml --set-font "$FONT"
+  ENV="ST_Transform(ST_MakeEnvelope($W,$S,$E,$N,4326),3857)"
+  # typical tiles: random roads/tracks/paths, plus the inside of the largest forest and protected areas
+  psql -d gis -At -F';' > "$WORK/points.txt" <<SQL
+SELECT ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(ST_LineInterpolatePoint(way,0.5),4326) p FROM planet_osm_line
+  WHERE highway IS NOT NULL AND way && $ENV AND GeometryType(way)='LINESTRING' ORDER BY random() LIMIT 8) t;
+SELECT ST_Y(p), ST_X(p) FROM (SELECT ST_Transform(ST_PointOnSurface(way),4326) p FROM planet_osm_polygon
+  WHERE (landuse='forest' OR "natural" IN ('wood','scrub') OR boundary IN ('national_park','protected_area')) AND way && $ENV
+  ORDER BY way_area DESC NULLS LAST LIMIT 6) t;
+SQL
+  cat "$WORK/points.txt"
+  psql -d gis -At -c "SELECT 'largest polygons (points): ' || string_agg(n::text, ', ') FROM (SELECT ST_NPoints(way) n FROM planet_osm_polygon ORDER BY 1 DESC LIMIT 10) t;"
+  for z in ${PROFILE_ZOOMS:-13}; do
+    echo "----- zoom $z"
+    PYTHONPATH="$HERE" python3 "$HERE/render_profile.py" --style opentopomap.xml --points "$WORK/points.txt" \
+      --zoom "$z" --scale "$SCALE" --magnify "${MAGNIFY:-1}"
+  done
+elif [ "${MODE:-tiles}" = "preview" ]; then
   step "Rendering preview images"
   # fixed places plus example spots found in the data (viewpoint, invisible path, private way)
   PLACES="$WORK/places.txt"
