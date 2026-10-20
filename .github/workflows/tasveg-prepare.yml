@@ -1,0 +1,29 @@
+name: Prepare TASVEG
+# Makes the compact TASVEG copy (release asset tasveg_kompakt.gpkg.xz) from the original ZIP.
+on:
+  push:
+    branches: [main]
+    paths: ['render/tasveg/prepare_compact.sh', '.github/workflows/tasveg-prepare.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Prepare
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p logs
+          set -o pipefail
+          bash render/tasveg/prepare_compact.sh 2>&1 | tee logs/tasveg-prepare.log
+      - name: Publish log
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "tasveg-prepare ${{ github.run_id }} ${{ job.status }}" tasveg-logs

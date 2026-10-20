@@ -12,7 +12,12 @@ WORK="$1"; W="$2"; S="$3"; E="$4"; N="$5"
 mkdir -p "$WORK/tasveg"
 cd "$WORK/tasveg"
 
-SHP=$(find . -name 'TASVEG_*.shp' 2>/dev/null | head -1 || true)
+SHP=$(find . -name 'TASVEG_*.shp' -o -name 'tasveg_kompakt.gpkg' 2>/dev/null | head -1 || true)
+if [ -z "$SHP" ] && [ -z "${TASVEG_SRC:-}" ]; then
+  # compact copy (see prepare_compact.sh): a few MB instead of several GB
+  GH_TOKEN="${GITHUB_TOKEN:-}" gh release download tasveg-data -R "$GITHUB_REPOSITORY" -p 'tasveg_kompakt.gpkg.xz' -D . --clobber \
+    && xz -d -f tasveg_kompakt.gpkg.xz && SHP=./tasveg_kompakt.gpkg || echo "no compact TASVEG copy yet, using the original"
+fi
 if [ -z "$SHP" ]; then
   if [ -n "${TASVEG_SRC:-}" ]; then
     case "$TASVEG_SRC" in
@@ -27,12 +32,14 @@ if [ -z "$SHP" ]; then
   fi
   SHP=$(find . -name 'TASVEG_*.shp' | head -1)
 fi
+# the compact copy has lower-case column names and is already in Web Mercator
+SELECT="VEGCODE,FOREST_STR,NOTABLE_TR"; case "$SHP" in *.gpkg) SELECT="vegcode,forest_str,notable_tr" ;; esac
 [ -n "$SHP" ] || { echo "ERROR: no TASVEG shapefile found"; exit 1; }
 echo "TASVEG source: $SHP"
 
 # only the needed columns, clipped to the region, in Web Mercator
 ogr2ogr -f PostgreSQL PG:dbname=gis "$SHP" -nln tasveg_raw -overwrite \
-  -select VEGCODE,FOREST_STR,NOTABLE_TR -spat "$W" "$S" "$E" "$N" -spat_srs EPSG:4326 \
+  -select "$SELECT" -spat "$W" "$S" "$E" "$N" -spat_srs EPSG:4326 \
   -t_srs EPSG:3857 -lco GEOMETRY_NAME=way -nlt PROMOTE_TO_MULTI -makevalid --config PG_USE_COPY YES -gt 100000
 
 # class table (code;...;Einteilung_A;Einteilung_B) -> SQL
