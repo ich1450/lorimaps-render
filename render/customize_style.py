@@ -235,6 +235,17 @@ if n != 2:
 sr_path.write_text(sr)
 print("patched: public parking from zoom 14")
 
+# ---------------------------------------------------------------- nature reserve borders: thin grey edges along the
+# green band for contrast (on both sides, so it works whatever the direction of the outline)
+ar_path = mapnik_dir / "styles-otm" / "areas.xml"
+ar, n = re.subn(r'(<LineSymbolizer stroke="#85c243" stroke-width="5" stroke-opacity="0.5"/>)',
+                r'<LineSymbolizer stroke="#6b6b6b" stroke-width="0.9" stroke-opacity="0.8" offset="2.9"/>'
+                r'<LineSymbolizer stroke="#6b6b6b" stroke-width="0.9" stroke-opacity="0.8" offset="-2.9"/>\1', ar_path.read_text())
+if n != 3:
+    sys.exit(f"style patch failed (reserve borders): {n} matches instead of 3")
+ar_path.write_text(ar)
+print("patched: grey edges on nature reserve borders")
+
 # ---------------------------------------------------------------- contour numbers without the light halo
 ct_path = mapnik_dir / "styles-otm" / "contours.xml"
 ct, n = re.subn(r'halo-radius="[0-9.]+"', 'halo-radius="0"', ct_path.read_text())
@@ -286,7 +297,7 @@ print("patched: forest without tree symbols")
 TASVEG_COLOURS = {1: "#4F9A57",   # rainforest
                   2: "#82BC6A",   # wet forest over rainforest
                   3: "#B6D778",   # other wet forest
-                  4: "#CCB47A",   # dry eucalypt forest (light orange-brown khaki)
+                  4: "#D4A42E",   # dry eucalypt forest (orange-yellow; looks like #FECB3E with the hillshade)
                   5: "#9DBF57",   # other forest / swamp forest (like other wet forest, darker)
                   6: "#EDE8D2",   # open land / highland
                   7: "#F4F0E6",   # farmland (F codes except plantations and urban)
@@ -324,7 +335,7 @@ if TASVEG:
 <PolygonPatternSymbolizer file="symbols-otm/tasveg_woodland_hatch.svg" alignment="global"/></Rule>
 </Style>
 <Style name="own-tasveg-trees">
-<Rule>&maxscale_zoom13;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" allow-overlap="true"/></Rule>
+<Rule>&maxscale_zoom15;<PointSymbolizer file="symbols-otm/tasveg_notable_tree.svg" allow-overlap="true"/></Rule>
 </Style>"""
     tv_layers = "\n".join([
         TV_STYLE,

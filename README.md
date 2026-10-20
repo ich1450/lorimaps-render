@@ -176,15 +176,17 @@ klaren Meldung ab, statt still nichts zu tun.
 - **Namen von Pfaden, Tracks und Nebenstrassen** (tertiary, unclassified, residential, service …) ab z14 (mit `EARLY_TRAILS=2` ab z13), bei langen Wegen mehrfach wiederholt.
 - **Pfade** auch auf z14 und früher gepunktet (wie OTM ab z15), nicht gestrichelt.
 - **Wald** nur grün, ohne Baumsymbole.
+- **Schutzgebietsgrenzen** mit feinen grauen Rändern am grünen Band; Höhenzahlen ohne hellen Hintergrund;
+  einzelne markante Bäume (OSM) ab z12.
 - **Öffentliche Parkplätze** ab z14.
 - **`EARLY_TRAILS=2`**: Pfade und Tracks erscheinen zwei Zoomstufen früher (z12 statt z14,
   Tracks grade1/2 ab z11), leicht dünner.
 - **TASVEG** (`TASVEG=1` in der Region, nur Tasmanien): Vegetation aus TASVEG 5.0 statt OSM-Wald/-Gebüsch,
   Einteilung A „Waldgefühl“ aus `render/tasveg/klassen_waldtypen.csv`:
   1 Regenwald `#4F9A57`, 2 Nasswald über Regenwald `#82BC6A`, 3 übriger Nasswald `#B6D778`,
-  4 trockener Eukalyptuswald `#CCB47A`, 5 sonstiger Wald/Sumpfwald `#9DBF57`, 6 Offenland/Hochland `#EDE8D2`,
+  4 trockener Eukalyptuswald `#D4A42E`, 5 sonstiger Wald/Sumpfwald `#9DBF57`, 6 Offenland/Hochland `#EDE8D2`,
   Kulturland `#F4F0E6`, Plantagen `#DCDDC6`; Siedlungen und O-Codes (Wasser, Sand, Fels) bleiben OpenTopoMap. Lichter Wald (`FOREST_STR=Woodland`)
-  fein hell schraffiert, Flächen mit auffälliger Baumart (`NOTABLE_TR`) ab Stufe 14 mit Baum-Umriss.
+  fein hell schraffiert, Flächen mit auffälliger Baumart (`NOTABLE_TR`) ab Stufe 16 mit Baum-Umriss.
   Daten: Original-ZIP als Release `tasveg-data` (wird vom Workflow geladen) oder lokal über `TASVEG_SRC=…zip`.
   Quelle: TASVEG 5.0 from www.theLIST.tas.gov.au ©State of Tasmania (CC BY 3.0 AU).
 - Zusätzlich importierte OSM-Schlüssel: `locked`, `4wd_only`, `smoothness`, `motor_vehicle`.
