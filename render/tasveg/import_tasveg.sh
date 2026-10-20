@@ -52,20 +52,24 @@ for r in rows[1:]:
 EOF
 psql -q -d gis -f classes.sql
 
-psql -q -d gis <<'SQL'
+psql -q -v ON_ERROR_STOP=1 -d gis <<'SQL'
 DROP TABLE IF EXISTS tasveg, tasveg_low, tasveg_notable;
 -- class A from the table; F codes (left out there) drawn as 7 farmland / 8 plantations,
 -- urban areas (FUR, FUM) and O codes (water, sand, rock) stay with OpenStreetMap
 UPDATE tasveg_class SET cls_a = CASE WHEN code IN ('FPH','FPS','FPU') THEN 8 ELSE 7 END
   WHERE cls_a = 0 AND code LIKE 'F%' AND code NOT IN ('FUR','FUM');
 CREATE TABLE tasveg AS
-  SELECT c.cls_a, c.cls_b, r.vegcode, COALESCE(r.forest_str, '') AS forest_str, ST_Subdivide(r.way, 256) AS way
+  SELECT c.cls_a, c.cls_b, r.vegcode, COALESCE(r.forest_str, '') AS forest_str,
+         ST_Subdivide(ST_CollectionExtract(ST_MakeValid(r.way), 3), 256) AS way
   FROM tasveg_raw r JOIN tasveg_class c ON c.code = r.vegcode WHERE c.cls_a > 0;
 CREATE INDEX tasveg_way ON tasveg USING gist (way);
+-- simplifying can make polygons invalid (GEOS errors in ST_Subdivide): repair before cutting
 CREATE TABLE tasveg_low AS
-  SELECT cls_a, ST_Subdivide(ST_SimplifyPreserveTopology(way, 60), 256) AS way FROM (
-    SELECT c.cls_a, r.way FROM tasveg_raw r JOIN tasveg_class c ON c.code = r.vegcode
-    WHERE c.cls_a > 0 AND ST_Area(r.way) > 40000) t;
+  SELECT cls_a, ST_Subdivide(g, 256) AS way FROM (
+    SELECT c.cls_a, ST_CollectionExtract(ST_MakeValid(ST_SimplifyPreserveTopology(r.way, 60)), 3) AS g
+    FROM tasveg_raw r JOIN tasveg_class c ON c.code = r.vegcode
+    WHERE c.cls_a > 0 AND ST_Area(r.way) > 40000) t
+  WHERE NOT ST_IsEmpty(g);
 CREATE INDEX tasveg_low_way ON tasveg_low USING gist (way);
 CREATE TABLE tasveg_notable AS
   SELECT notable_tr, ST_PointOnSurface(way) AS way, ST_Area(way) AS area FROM tasveg_raw
