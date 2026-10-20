@@ -253,7 +253,10 @@ print("patched: trail names from zoom 14")
 # ---------------------------------------------------------------- forest: only green, no tree symbols
 for name in ("landuse.xml", "landuse-over-hillshade.xml"):
     fp = mapnik_dir / "styles-otm" / name
-    t, n = re.subn(r'\s*<PolygonPatternSymbolizer file="symbols-otm/forest[^"]*"[^>]*/>', "", fp.read_text())
+    # the forest patterns contain the green background: replace them with a plain fill of the same colour
+    # (landuse.xml); the faint second pattern over the hillshade is dropped
+    plain = '<PolygonSymbolizer fill="#b7d97b" />' if name == "landuse.xml" else ""
+    t, n = re.subn(r'<PolygonPatternSymbolizer file="symbols-otm/forest[^"]*"[^>]*/>', plain, fp.read_text())
     if n != 3:
         sys.exit(f"style patch failed (forest symbols in {name}): {n} instead of 3")
     fp.write_text(t)
