@@ -1,0 +1,155 @@
+name: Render OpenTopoMap MBTiles
+
+# Renders the regions configured in render/region.env.
+# Starts on every push that changes render/ (or manually via "Run workflow").
+# MODE=tiles is split into SHARDS parallel jobs; a final job merges the parts into one file per region.
+on:
+  push:
+    branches: [main]
+    paths: ['render/**', '.github/workflows/render-otm.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: render
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+      count: ${{ steps.p.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          source render/region.env
+          n=${GITHUB_SHARDS:-1}; [ "$MODE" = tiles ] || n=1
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+          echo "shards=$(python3 -c "import json;print(json.dumps(list(range($n))))")" >> "$GITHUB_OUTPUT"
+
+  render:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJson(needs.plan.outputs.shards) }}
+    env:
+      SHARD: ${{ matrix.shard }}
+      SHARDS: ${{ needs.plan.outputs.count }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Render
+        run: |
+          mkdir -p logs
+          set -o pipefail
+          # intermediate logs every 5 minutes (branch render-logs-shard<k>)
+          ( while sleep 300; do bash render/push_logs.sh logs "run ${{ github.run_id }} shard $SHARD running $(date -u +%H:%M)" render-logs-shard$SHARD || true; done ) &
+          source render/region.env
+          SHARDS=${{ needs.plan.outputs.count }}
+          for r in $REGIONS; do
+            echo "########## region $r, shard $((SHARD + 1))/$SHARDS"
+            REGION=$r OUT=$GITHUB_WORKSPACE/out bash render/render.sh 2>&1 | tee -a logs/render.log
+          done
+
+      - name: Upload part
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: part-${{ matrix.shard }}
+          path: |
+            out/*.mbtiles
+            out/preview/*.jpg
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: ignore
+
+      - name: Publish logs
+        if: always()
+        run: bash render/push_logs.sh logs "run ${{ github.run_id }} shard $SHARD ${{ job.status }}" render-logs-shard$SHARD
+
+  merge:
+    needs: [plan, render]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: parts
+          pattern: part-*
+          merge-multiple: true
+
+      - name: Merge parts
+        run: |
+          python3 -c "import PIL" 2>/dev/null || pip install --break-system-packages -q pillow
+          mkdir -p logs out
+          echo "render jobs: ${{ needs.render.result }}" | tee logs/merge.log
+          cp parts/preview/*.jpg logs/ 2>/dev/null || true
+          for f in parts/*.mbtiles; do
+            [ -f "$f" ] || continue
+            case "$f" in *.part*.mbtiles) ;; *) mv "$f" out/ ;; esac
+          done
+          for base in $(ls parts/*.part*.mbtiles 2>/dev/null | sed 's/\.part[0-9]*\.mbtiles$//' | sort -u); do
+            n=$(basename "$base")
+            parts=$(ls "$base".part*.mbtiles | wc -l)
+            echo "merging $n: $parts of ${{ needs.plan.outputs.count }} parts" | tee -a logs/merge.log
+            if [ "$parts" -ne "${{ needs.plan.outputs.count }}" ]; then
+              echo "WARN: $n incomplete, written as $n-INCOMPLETE" | tee -a logs/merge.log
+              n="$n-INCOMPLETE"
+            fi
+            python3 render/merge_mbtiles.py "out/$n.mbtiles" "$base".part*.mbtiles 2>&1 | tee -a logs/merge.log
+          done
+          ls -la out | tee -a logs/merge.log
+
+      - name: Sample tiles for checking
+        run: |
+          for f in out/*.mbtiles; do
+            [ -f "$f" ] || continue
+            n=$(basename "$f" .mbtiles)
+            sqlite3 "$f" "SELECT zoom_level, count(*), sum(length(tile_data))/1024/1024 || ' MB' FROM tiles GROUP BY zoom_level;" > "logs/tile-stats-$n.txt"
+            ls -la "$f" >> "logs/tile-stats-$n.txt"
+            python3 - "$f" "$n" <<'EOF'
+          import io, math, sqlite3, sys
+          from PIL import Image
+          f, n = sys.argv[1], sys.argv[2]
+          db = sqlite3.connect(f)
+          w, s, e, nn = map(float, db.execute("SELECT value FROM metadata WHERE name='bounds'").fetchone()[0].split(","))
+          lon, lat = (w + e) / 2, (s + nn) / 2
+          for z in (10, 12, 13, 14, 15, 16, 17):
+              t = 2 ** z
+              x = int((lon + 180) / 360 * t)
+              y = int((1 - math.log(math.tan(math.radians(lat)) + 1 / math.cos(math.radians(lat))) / math.pi) / 2 * t)
+              row = db.execute("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?", (z, x, t - 1 - y)).fetchone()
+              if row:
+                  Image.open(io.BytesIO(row[0])).save(f"logs/sample-{n}-z{z}.png")
+          EOF
+          done
+
+      - name: Publish logs
+        if: always()
+        run: bash render/push_logs.sh logs "run ${{ github.run_id }} merge ${{ job.status }} (render ${{ needs.render.result }})"
+
+      - name: Publish map
+        if: success() && hashFiles('out/*.mbtiles') != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: map-${{ github.run_number }}
+          name: Offline map – ${{ github.run_number }}
+          body: OpenTopoMap-style offline map (MBTiles, 512 px WebP tiles). Import it in LoriMaps via the map menu → "+ Karte hinzufügen".
+          files: out/*.mbtiles
