@@ -1,0 +1,24 @@
+name: Probe data sources
+on:
+  push:
+    paths: ['.github/workflows/probe.yml']
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p logs
+          curl -sL --max-time 120 https://listdata.thelist.tas.gov.au/opendata/data/ > logs/opendata-data.html || true
+          grep -o 'href="[^"]*"' logs/opendata-data.html | grep -i 'TRANSPORT\|WALK\|TRACK\|ROAD\|PWS\|PARKS\|RESERVE' > logs/links.txt || true
+          for d in $(grep -o 'LIST_TRANSPORT_SEGMENTS[^"/]*' logs/links.txt | sort -u | head -5); do
+            curl -sIL --max-time 60 "https://listdata.thelist.tas.gov.au/opendata/data/$d" >> logs/heads.txt 2>&1
+            curl -sL --max-time 60 "https://listdata.thelist.tas.gov.au/opendata/data/$d/" | grep -o 'href="[^"]*"' >> logs/sub.txt || true
+          done
+          curl -sL --max-time 60 "https://data.gov.au/data/api/3/action/package_show?id=walking-tracks-pws" > logs/walking-tracks.json || true
+          bash render/push_logs.sh logs "probe ${{ github.run_id }}" probe-logs
