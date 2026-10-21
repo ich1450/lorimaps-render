@@ -189,6 +189,8 @@ klaren Meldung ab, statt still nichts zu tun.
   fein hell schraffiert, Flächen mit auffälliger Baumart (`NOTABLE_TR`) ab Stufe 16 mit Baum-Umriss.
   Daten: Original-ZIP als Release `tasveg-data` (wird vom Workflow geladen) oder lokal über `TASVEG_SRC=…zip`.
   Quelle: TASVEG 5.0 from www.theLIST.tas.gov.au ©State of Tasmania (CC BY 3.0 AU).
+- **Riesenbäume** aus `render/pois/tasmanien_baeume.csv` (Name;Breite, Länge): goldener Stern ab z9, Name ab z12
+  (mit `MAGNIFY=2` sichtbar ab 10 bzw. 13).
 - Zusätzlich importierte OSM-Schlüssel: `locked`, `4wd_only`, `smoothness`, `motor_vehicle`.
 
 ---

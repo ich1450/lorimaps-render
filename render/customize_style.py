@@ -347,6 +347,26 @@ if TASVEG:
     trees = layer("own-tasveg-trees", ["own-tasveg-trees"], "(SELECT way, area, notable_tr FROM tasveg_notable) AS tvt")
     xml = patch("</Map>", trees + "\n</Map>", "TASVEG notable trees")
 
+# ---------------------------------------------------------------- own points: giant trees (render/pois/tasmanien_baeume.csv)
+# golden star from zoom 9, name from zoom 12 (with MAGNIFY=2 shown from 10 and 13)
+import csv as _csv
+trees_out = mapnik_dir / "own_big_trees.csv"
+with open(here / "pois" / "tasmanien_baeume.csv", encoding="utf-8-sig") as f_in, open(trees_out, "w", newline="", encoding="utf-8") as f_out:
+    w = _csv.writer(f_out)
+    w.writerow(["name", "lat", "lon"])
+    for r in _csv.DictReader(f_in, delimiter=";"):
+        lat, lon = (float(v) for v in r["Koordinaten"].split(","))
+        w.writerow([r["Name"].strip(), lat, lon])
+BIG_TREES = f"""<Style name="own-big-trees">
+<Rule>&maxscale_zoom9;<PointSymbolizer file="symbols-otm/big_tree_star.svg" allow-overlap="true"/></Rule>
+<Rule>&maxscale_zoom12;<TextSymbolizer fontset-name="sans-condensed-bold" size="9" fill="#5a3d00" halo-radius="1.5" halo-fill="rgba(255,255,255,0.85)"
+ dy="11" wrap-width="80" allow-overlap="false">[name]</TextSymbolizer></Rule>
+</Style>
+<Layer name="own-big-trees" srs="+proj=longlat +datum=WGS84 +no_defs"><StyleName>own-big-trees</StyleName><Datasource>
+<Parameter name="type">csv</Parameter><Parameter name="file">{trees_out}</Parameter></Datasource></Layer>
+"""
+xml = patch("</Map>", BIG_TREES + "</Map>", "giant trees (golden stars)")
+
 # ---------------------------------------------------------------- 5+6) camp sites, locked gates (on top)
 CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 'camp_site'
   UNION ALL SELECT ST_PointOnSurface(way) AS way, name FROM planet_osm_polygon WHERE tourism = 'camp_site') AS camps""")
