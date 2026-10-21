@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="shortcut icon"
+      type="image/x-icon"
+      href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAAAAAAAABSUlL/Li4u/zQ0NP8zMzP/MzMz/zMzM/8zMzP/MzMz/zMzM/8zMzP/MzMz/zMzM/80NDT/Li4u/2hoaP/v7+//JiYm/wAAAP8BAQH/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wICAv8AAAD/UFBQ/ygoKP8AAAD/AwMD/wICAv8CAgL/AgIC/wICAv8CAgL/AgIC/wICAv8CAgL/AgIC/wICAv8CAgL/AgIC/wUFBf8mJib/AAAA/wUFBf8AAAD/AAAA/wQEBP8CAgL/AwMD/wQEBP8EBAT/AQEB/wICAv8EBAT/BAQE/wEBAf8BAQH/JiYm/wAAAP8CAgL/AwMD/wMDA/8AAAD/AAAA/wAAAP8AAAD/AAAA/wEBAf8AAAD/AAAA/wAAAP8AAAD/AAAA/xwcHP8zMzP/ZmZm/wAAAP8AAAD/aGho/zg4OP9iYmL/kJCQ/3Jycv8ICAj/PT09/5mZmf9xcXH/CQkJ/wAAAP8ZGRn/ODg4//T09P9bW1v/ZmZm/+3t7f9CQkL/4uLi/4iIiP/T09P/qqqq/3x8fP+NjY3/09PT/5aWlv8AAAD/JiYm/wAAAP/T09P/2tra/+Li4v+9vb3/CAgI/+rq6v9WVlb/p6en/7W1tf8AAAD/Jycn/+Pj4/+Wlpb/AAAA/yoqKv8AAAD/j4+P/5KSkv+enp7/dnZ2/wAAAP/q6ur/qKio/+np6f9aWlr/SkpK//39/f93d3f/AAAA/wAAAP8pKSn/AAAA/y8vL//u7u7/5eXl/xoaGv8MDAz/7u7u/1xcXP/Q0ND/mJiY/4yMjP/Jycn/RERE/z09Pf8AAAD/Jycn/wAAAP8AAAD/kZGR/4WFhf8AAAD/DAwM/5WVlf+2trb/mZmZ/xoaGv8bGxv/ra2t/87Ozv9TU1P/AAAA/ycnJ/8AAAD/AgIC/wAAAP8AAAD/AQEB/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8oKCj/AAAA/wICAv8DAwP/AwMD/wAAAP8AAAD/AwMD/wMDA/8EBAT/AQEB/wEBAf8DAwP/AgIC/wICAv8AAAD/KCgo/wAAAP8BAQH/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/1paWv8AAAD/AgIC/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP/l5eX/PT09/wAAAP8BAQH/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAA/wAAAP8AAAD/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+    />
+    <title>Australian Bureau of Statistics</title>
+    <style>
+      * {
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      html,
+      body,
+      div,
+      span,
+      object,
+      iframe,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      blockquote,
+      pre,
+      abbr,
+      address,
+      cite,
+      code,
+      del,
+      dfn,
+      em,
+      img,
+      ins,
+      kbd,
+      q,
+      samp,
+      small,
+      strong,
+      sub,
+      sup,
+      var,
+      b,
+      i,
+      dl,
+      dt,
+      dd,
+      ol,
+      ul,
+      li,
+      fieldset,
+      form,
+      label,
+      legend,
+      caption,
+      article,
+      aside,
+      canvas,
+      details,
+      figcaption,
+      figure,
+      footer,
+      header,
+      hgroup,
+      menu,
+      nav,
+      section,
+      summary,
+      time,
+      mark,
+      audio,
+      video {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        outline: 0;
+        vertical-align: baseline;
+        background: transparent;
+      }
+
+      article,
+      aside,
+      details,
+      figcaption,
+      figure,
+      footer,
+      header,
+      hgroup,
+      nav,
+      section {
+        display: block;
+      }
+
+      html {
+        font-size: 16px;
+        line-height: 24px;
+        width: 100%;
+        height: 100%;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+
+      img {
+        vertical-align: middle;
+        max-width: 100%;
+        height: auto;
+        border: 0;
+        -ms-interpolation-mode: bicubic;
+      }
+
+      body {
+        min-height: 100%;
+        -webkit-font-smoothing: subpixel-antialiased;
+      }
+
+      .clearfix {
+        clear: both;
+        zoom: 1;
+      }
+      .clearfix:before,
+      .clearfix:after {
+        content: "\0020";
+        display: block;
+        height: 0;
+        visibility: hidden;
+      }
+      .clearfix:after {
+        clear: both;
+      }
+    </style>
+    <style>
+      body {
+        font-family:
+          -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Helvetica,
+          Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+          "Segoe UI Symbol";
+      }
+      .plain.error-page-wrapper {
+        background-color: #0070c9;
+        padding: 5vh 5%;
+        position: relative;
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+        -webkit-box-align: center;
+        -ms-flex-align: center;
+        align-items: center;
+      }
+
+      .plain.error-page-wrapper .content-container {
+        -webkit-transition:
+          left 0.5s ease-out,
+          opacity 0.5s ease-out;
+        -moz-transition:
+          left 0.5s ease-out,
+          opacity 0.5s ease-out;
+        -ms-transition:
+          left 0.5s ease-out,
+          opacity 0.5s ease-out;
+        -o-transition:
+          left 0.5s ease-out,
+          opacity 0.5s ease-out;
+        transition:
+          left 0.5s ease-out,
+          opacity 0.5s ease-out;
+        position: relative;
+
+        max-width: 900px;
+        top: -5vh;
+      }
+
+      @media screen and (max-width: 900px) {
+        .plain.error-page-wrapper {
+          padding: 20px;
+          text-align: center;
+        }
+        .plain.error-page-wrapper .content-container {
+          position: static;
+        }
+      }
+
+      .plain.error-page-wrapper .content-container.in {
+        left: 0px;
+        opacity: 1;
+      }
+
+      .plain.error-page-wrapper .head-line {
+        transition: color 0.2s linear;
+        font-size: 48px;
+        line-height: 60px;
+        color: rgba(255, 255, 255, 0.2);
+        letter-spacing: -1px;
+        margin-bottom: 5px;
+      }
+      .plain.error-page-wrapper .subheader {
+        transition: color 0.2s linear;
+        font-size: 36px;
+        line-height: 46px;
+        color: #fff;
+      }
+      .plain.error-page-wrapper hr {
+        height: 1px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: none;
+        width: 250px;
+        margin: 35px 0;
+      }
+      .plain.error-page-wrapper .context {
+        transition: color 0.2s linear;
+        font-size: 18px;
+        line-height: 27px;
+        color: #fff;
+      }
+      .plain.error-page-wrapper .context p {
+        margin: 0;
+      }
+      .plain.error-page-wrapper .context p:nth-child(n + 2) {
+        margin-top: 12px;
+      }
+      .plain.error-page-wrapper .buttons-container {
+        margin-top: 45px;
+        overflow: hidden;
+      }
+      .plain.error-page-wrapper .buttons-container a {
+        transition:
+          color 0.2s linear,
+          border-color 0.2s linear;
+        font-size: 14px;
+        text-decoration: none;
+        color: #fff;
+        border: 2px solid white;
+        border-radius: 3px;
+        padding: 8px 30px 9px;
+        display: inline-block;
+        float: left;
+      }
+      .plain.error-page-wrapper .buttons-container a:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+      .plain.error-page-wrapper .buttons-container a:first-child {
+        margin-right: 25px;
+      }
+
+      @media screen and (max-width: 485px) {
+        .plain.error-page-wrapper .header {
+          font-size: 36px;
+        }
+        .plain.error-page-wrapper .subheader {
+          font-size: 27px;
+          line-height: 38px;
+        }
+        .plain.error-page-wrapper hr {
+          width: 185px;
+          margin: 25px 0;
+        }
+
+        .plain.error-page-wrapper .context {
+          font-size: 16px;
+          line-height: 24px;
+        }
+        .plain.error-page-wrapper .buttons-container {
+          margin-top: 35px;
+        }
+
+        .plain.error-page-wrapper .buttons-container a {
+          font-size: 13px;
+          padding: 8px 0 7px;
+          width: 45%;
+          text-align: center;
+        }
+        .plain.error-page-wrapper .buttons-container a:first-child {
+          margin-right: 10%;
+        }
+      }
+
+      .primary-text-color {
+        color: rgba(255, 255, 255, 1) !important;
+      }
+
+      .primary-text-color a {
+        color: rgba(255, 255, 255, 1) !important;
+      }
+      .primary-text-color a:hover,
+      .primary-text-color a:focus {
+        text-decoration: none;
+      }
+
+      .secondary-text-color {
+        color: rgba(0, 69, 125, 1) !important;
+      }
+
+      .border-button {
+        font-size: 16px;
+        font-size: 1rem;
+        line-height: 1.5;
+        padding: 8px 24px;
+        padding: 0.5rem 1.5rem;
+        display: inline-block;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 4px;
+        cursor: pointer;
+        vertical-align: middle;
+        transition: 0.15s ease;
+        transition-property: color, background-color, border;
+        border-width: 3px;
+        border-style: solid;
+        text-shadow: none;
+        background: #0070c9;
+        color: #fff;
+        border: 3px solid transparent;
+        color: #fff !important;
+        font-weight: bold;
+        font-size: 1.1rem;
+        display: block;
+      }
+
+      .button {
+        background-color: #ffffff !important;
+        color: transparent !important;
+      }
+    </style>
+  </head>
+  <body class="plain error-page-wrapper background-color background-image">
+    <div class="content-container">
+      <div class="head-line primary-text-color"></div>
+      <div class="subheader primary-text-color">
+        <p>
+          Data.gov.au is currently undergoing maintenance.<br /><br />We'll be
+          back online on 22 October 2026.
+        </p>
+      </div>
+    </div>
+    <script></script>
+  </body>
+</html>
