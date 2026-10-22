@@ -21,7 +21,7 @@ nr;pattern;lon;lat;radius_km
 20;Shadow Lake;146.150;-42.100;9
 21;Echo Point|Overland Track;146.150;-42.080;5
 22;Franklin River;146.020;-42.210;3
-23;Donaghys;145.960;-42.170;3
+23;Donaghys;145.938;-42.195;2
 24;Nelson Falls;145.730;-42.100;3
 25;Kelly Basin;145.620;-42.270;9
 26;Hogarth;145.320;-42.160;3
@@ -29,15 +29,15 @@ nr;pattern;lon;lat;radius_km
 28;Huon Pine;145.080;-41.650;3
 29;Dove Lake Circuit;145.960;-41.660;3
 30;Enchanted;145.940;-41.595;3
-31;Crater Lake;145.950;-41.640;3
+31;Crater Lake|Crater Falls|Wombat Pool|Lake Lilla|Overland Track;145.948;-41.646;1.1
 32;Cradle Mountain Summit|Cradle Mountain Track|Summit;145.950;-41.680;3
 33;Calcified Forest;143.887;-40.105;5
 34;^The Nut;145.300;-40.765;3
-35;Fern Glade;145.885;-41.075;6
+35;@walks;145.9213;-41.0802;0.6
 36;Leven Canyon Lookout;146.010;-41.390;3
 37;Alum Cliffs;146.430;-41.530;3
 38;Springlawn;146.600;-41.150;5
-39;Hollybank;147.210;-41.320;3
+39;@walks;147.2072;-41.3023;0.8
 40;Duck Reach;147.100;-41.450;3
 41;Tamar Island;147.080;-41.380;3
 42;Liffey Falls;146.770;-41.700;4
