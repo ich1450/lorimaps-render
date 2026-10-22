@@ -248,7 +248,16 @@ else
     sub "osmdata.openstreetmap.de not reachable, using cached sea polygons ($wc_age days old)"
     unzip -q -o water-cache.zip -d "$DATA"
   elif [ -z "$ok" ]; then
-    echo "ERROR: sea polygons not available"; exit 1
+    # no download, no cache: build the sea polygons from the coastline in our own OSM extract
+    sub "osmdata.openstreetmap.de not reachable, building sea polygons with osmcoastline"
+    command -v osmcoastline >/dev/null || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends osmcoastline
+    osmcoastline -o coast.db --output-polygons=water --srs=3857 -f "$WORK/region.osm.pbf" || true
+    for set in simplified-water-polygons-split-3857:simplified_water_polygons water-polygons-split-3857:water_polygons; do
+      dir=${set%%:*}; layer=${set##*:}
+      mkdir -p "$DATA/$dir"
+      ogr2ogr -f "ESRI Shapefile" "$DATA/$dir/$layer.shp" coast.db water_polygons -nln "$layer" -overwrite
+    done
+    ls -la "$DATA"/water-polygons-split-3857
   fi
 fi
 
