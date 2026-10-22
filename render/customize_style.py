@@ -23,6 +23,9 @@ mapnik_dir = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
 EARLY = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else 0
 # TASVEG=1: vegetation of Tasmania from TASVEG instead of OpenStreetMap's forest and scrub
 TASVEG = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else 0
+# LIST_TRACKS (Tasmania, LIST Transport Segments): "A" = all tracks and paths from LIST instead of OSM,
+# "B" = walking tracks from LIST, vehicle tracks from OSM (OSM paths that LIST also has are left out)
+LIST = (sys.argv[4] if len(sys.argv) > 4 else "").strip().upper()
 xml_path = mapnik_dir / "opentopomap.xml"
 xml = xml_path.read_text()
 
@@ -178,11 +181,15 @@ NOACCESS = ("(foot IN ('no','private') OR (access IN ('no','private') "
 INVISIBLE = "trail_visibility IN ('no','horrible')"
 PATHLIKE = "highway IN ('path','footway','bridleway','steps','cycleway')"
 
-# faded ways are taken out of OpenTopoMap's road layer and drawn light grey in an own layer
+# OSM ways replaced by LIST data (option)
+OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND list_dup)"}.get(LIST, "false")
+
+# ways without public access are taken out of OpenTopoMap's road layer and drawn light grey in an own layer;
+# paths not visible on the ground stay normal and get the label "nicht sichtbar"
 start = xml.index('<Layer name="roads">')
 end = xml.index("</Layer>", start) + len("</Layer>")
 roads = xml[start:end]
-excl = f"NOT COALESCE((highway = 'track' OR {PATHLIKE}) AND ({INVISIBLE} OR {NOACCESS}), false) AND ("
+excl = f"NOT COALESCE(((highway = 'track' OR {PATHLIKE}) AND {NOACCESS}) OR {OSM_DROP}, false) AND ("
 roads = patch("FROM planet_osm_line WHERE ", "FROM planet_osm_line WHERE " + excl, "roads layer: exclude faded ways", roads)
 roads = patch(" ORDER BY (CASE WHEN highway IN ('motorway'", ") ORDER BY (CASE WHEN highway IN ('motorway'", "roads layer: close condition", roads)
 xml = xml[:start] + roads + xml[end:]
@@ -197,6 +204,11 @@ FADED_STYLE = f"""<Style name="own-faded-ways">
 <Rule>&maxscale_zoom15;<Filter>[highway] = 'steps'</Filter>
 <LineSymbolizer stroke="{GREY}" stroke-width="2.5" stroke-dasharray="1,1.5"/></Rule>
 </Style>
+<Style name="own-invisible">
+<Rule>&maxscale_zoom{13 if EARLY else 14};
+<TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#555555" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
+ placement="line" spacing="300" max-char-angle-delta="30" dy="6">'nicht sichtbar'</TextSymbolizer></Rule>
+</Style>
 <Style name="own-4wd">
 <Rule>&maxscale_zoom14;
 <TextSymbolizer fontset-name="sans-condensed-bold" size="8" fill="#5a3a00" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
@@ -204,7 +216,9 @@ FADED_STYLE = f"""<Style name="own-faded-ways">
 </Style>"""
 
 FADED_SQL = one_line(f"""(SELECT way, highway FROM planet_osm_line
-  WHERE (highway = 'track' OR {PATHLIKE}) AND ({INVISIBLE} OR {NOACCESS})) AS fadedways""")
+  WHERE (highway = 'track' OR {PATHLIKE}) AND {NOACCESS} AND NOT COALESCE({OSM_DROP}, false)) AS fadedways""")
+INVISIBLE_SQL = one_line(f"""(SELECT way FROM planet_osm_line
+  WHERE (highway = 'track' OR {PATHLIKE}) AND {INVISIBLE} AND NOT {NOACCESS}) AS invisible""")
 FOURWD_SQL = one_line("""(SELECT way FROM planet_osm_line WHERE highway = 'track'
   AND ("4wd_only" = 'yes' OR smoothness IN ('very_bad','horrible','very_horrible','impassable'))) AS fourwd""")
 
@@ -222,6 +236,60 @@ def layer(name, styles, sql):
 
 
 insert = "\n".join([FADED_STYLE, layer("own-faded-ways", ["own-faded-ways"], FADED_SQL)])
+
+# ---------------------------------------------------------------- LIST Transport Segments (option)
+if LIST in ("A", "B"):
+    # OSM names of the replaced ways are not written either
+    rn_start = xml.index('<Layer name="road-names-text">')
+    rn_end = xml.index("</Layer>", rn_start)
+    rnl = xml[rn_start:rn_end]
+    rnl = patch("FROM planet_osm_line WHERE (!scale_denominator!",
+                f"FROM planet_osm_line WHERE NOT COALESCE({OSM_DROP}, false) AND ((!scale_denominator!", "road names: drop replaced ways", rnl)
+    rnl = patch(" ORDER BY (CASE WHEN highway IN ('motorway','trunk')", ") ORDER BY (CASE WHEN highway IN ('motorway','trunk')", "road names: close condition", rnl)
+    xml = xml[:rn_start] + rnl + xml[rn_end:]
+
+    KIND = ("CASE WHEN tran_class = 'Vehicular Track' THEN 'vtrack' "
+            "WHEN trans_type = 'Route' AND tran_class = 'Walking' THEN 'route' "
+            "WHEN tran_class LIKE 'AS2156 Track Class 4%' THEN 'walk4' "
+            "WHEN tran_class LIKE 'AS2156 Track Class 5%' OR tran_class LIKE 'AS2156 Track Class 6%' THEN 'walk5' "
+            "WHEN trans_type = 'Track' THEN 'walk' ELSE 'road' END")
+    SURF = ("CASE WHEN surface_ty = '4WD required' THEN 'nur 4WD' "
+            "WHEN surface_ty = 'Unsealed' THEN 'unbefestigt' "
+            "WHEN surface_ty = 'Sealed' AND tran_class = 'Vehicular Track' THEN 'asphaltiert' ELSE '' END")
+    RESTR = "CASE WHEN user_type IN ('Restricted','Private') THEN 1 ELSE 0 END"
+    LIST_SQL = one_line(f"""(SELECT way, {KIND} AS kind, {RESTR} AS restr, {SURF} AS surf, COALESCE(pri_name,'') AS name,
+      trans_type, tran_class FROM list_transport) AS lt""")
+    lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST == "A" else [])
+    DASH = {"walk": "1.1,2", "walk4": "1.1,2,1.1,6", "walk5": "1.1,6", "route": "1,8", "vtrack": None}
+    ZOOMS = ([(12, 13, 0.7)] if EARLY else []) + [(14, 14, 0.9), (15, None, 1.0)]
+    rules = []
+    for kind in lines_kinds:
+        for zf, zt, f in ZOOMS:
+            lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
+            w = (1.4 if kind == "vtrack" else 1.0) * f
+            d = f' stroke-dasharray="{DASH[kind]}"' if DASH[kind] else ""
+            for restr, col in ((0, "black"), (1, GREY)):
+                rules.append(f'<Rule>{lim}<Filter>[kind] = \'{kind}\' and [restr] = {restr}</Filter>'
+                             f'<LineSymbolizer stroke="{col}" stroke-width="{w:.2f}"{d}/></Rule>')
+    LIST_LINES = f'<Style name="own-list-lines">{"".join(rules)}</Style>'
+    insert += "\n" + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL)
+
+    name_kinds = " or ".join(f"[kind] = '{k}'" for k in lines_kinds)
+    LIST_LABELS = f"""<Style name="own-list-names">
+<Rule>&maxscale_zoom{13 if EARLY else 14};<Filter>({name_kinds}) and [name] != ''</Filter>
+<TextSymbolizer fontset-name="sans-condensed" size="9" fill="black" halo-radius="1.5" halo-fill="rgba(255,255,255,0.8)"
+ repeat-distance="300" spacing="300" placement="line" max-char-angle-delta="40">[name]</TextSymbolizer></Rule>
+</Style>
+<Style name="own-list-surface">
+<Rule>&maxscale_zoom{13 if EARLY else 14};<Filter>[surf] != ''</Filter>
+<TextSymbolizer fontset-name="sans-condensed-bold" size="8" fill="#5a3a00" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
+ placement="line" spacing="280" repeat-distance="200" max-char-angle-delta="25" dy="-6">[surf]</TextSymbolizer></Rule>
+</Style>"""
+    LIST_TOP = LIST_LABELS + "\n" + layer("own-list-names", ["own-list-names"], LIST_SQL) + "\n" + \
+        layer("own-list-surface", ["own-list-surface"], LIST_SQL) + "\n"
+    print(f"patched: LIST transport segments, variant {LIST}")
+else:
+    LIST_TOP = ""
 end = xml.index("</Layer>", xml.index('<Layer name="roads">')) + len("</Layer>")
 xml = xml[:end] + "\n" + insert + "\n" + xml[end:]
 print("patched: faded-way layer")
@@ -383,8 +451,9 @@ TOP = f"""<Style name="own-camps">
 </Style>
 {layer("own-camps", ["own-camps"], CAMPS_SQL)}
 {layer("own-gates", ["own-gates"], GATES_SQL)}
-{layer("own-4wd", ["own-4wd"], FOURWD_SQL)}
-"""
+{layer("own-4wd", ["own-4wd"], FOURWD_SQL) if not LIST else ""}
+{layer("own-invisible", ["own-invisible"], INVISIBLE_SQL)}
+{LIST_TOP}"""
 xml = patch("</Map>", TOP + "</Map>", "camp sites and locked gates on top")
 
 xml_path.write_text(xml)

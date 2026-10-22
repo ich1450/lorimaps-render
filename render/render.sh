@@ -40,7 +40,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommend
   postgresql-16-postgis-3 postgresql-contrib osm2pgsql osmium-tool \
   gdal-bin python3-gdal libgdal-dev python3-mapnik mapnik-utils \
   fonts-dejavu-core fonts-dejavu-extra fonts-unifont fonts-noto-core \
-  libdbd-pg-perl bc unzip sqlite3 build-essential python3-pil
+  libdbd-pg-perl bc unzip zip sqlite3 build-essential python3-pil
 echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | sudo debconf-set-selections
 for pkg in fonts-roboto-unhinted fonts-open-sans ttf-mscorefonts-installer fonts-wine fonts-urw-base35 fonts-texgyre; do   # optional fonts
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends "$pkg" || echo "WARN: $pkg not available"
@@ -58,7 +58,7 @@ else
   git clone -q --depth 1 https://github.com/der-stefan/OpenTopoMap "$OTM"
 fi
 git -C "$OTM" log -1 --format='OpenTopoMap commit %H (%cd)'
-python3 "$HERE/customize_style.py" "$OTM/mapnik" "${EARLY_TRAILS:-0}" "${TASVEG:-0}"
+python3 "$HERE/customize_style.py" "$OTM/mapnik" "${EARLY_TRAILS:-0}" "${TASVEG:-0}" "${LIST_TRACKS:-}"
 mkdir -p "$DEM" "$DATA"
 
 # ---------------------------------------------------------------- database
@@ -143,6 +143,12 @@ if [ "${TASVEG:-0}" = 1 ]; then
   bash "$HERE/tasveg/import_tasveg.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
 fi
 
+# ---------------------------------------------------------------- LIST transport segments (Tasmania, option)
+if [ -n "${LIST_TRACKS:-}" ]; then
+  step "Importing LIST transport segments (variant $LIST_TRACKS)"
+  bash "$HERE/list/import_list_transport.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
+fi
+
 # ---------------------------------------------------------------- DEM
 step "Downloading Copernicus GLO-30 DEM"
 rm -rf "$WORK/dem-src"; mkdir -p "$WORK/dem-src"
@@ -202,14 +208,43 @@ step "Water polygons"
 cd "$WORK"
 read -r MX0 MY0 <<< "$(echo "$BW $BS" | gdaltransform -s_srs EPSG:4326 -t_srs EPSG:3857 -output_xy)"
 read -r MX1 MY1 <<< "$(echo "$BE $BN" | gdaltransform -s_srs EPSG:4326 -t_srs EPSG:3857 -output_xy)"
-for set in simplified-water-polygons-split-3857:simplified_water_polygons water-polygons-split-3857:water_polygons; do
-  dir=${set%%:*}; layer=${set##*:}
-  curl -fsSL --retry 3 -o "$dir.zip" "https://osmdata.openstreetmap.de/download/$dir.zip"
-  unzip -q -o "$dir.zip" && rm "$dir.zip"
-  mkdir -p "$DATA/$dir"
-  ogr2ogr -f "ESRI Shapefile" -spat "$MX0" "$MY0" "$MX1" "$MY1" "$DATA/$dir/$layer.shp" "$dir/$layer.shp" -overwrite
-  rm -rf "$dir"
-done
+# the clipped sea polygons are kept in the release "osm-cache" (coastlines hardly change; the download server is
+# sometimes unreachable): used for 30 days, or longer if osmdata.openstreetmap.de cannot be reached
+WATER_ASSET="water-$CACHE_KEY.zip"
+have_cache=""
+if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  wc_date=$(gh release view osm-cache -R "$GITHUB_REPOSITORY" --json assets -q ".assets[] | select(.name==\"$WATER_ASSET\") | .updatedAt" 2>/dev/null || true)
+  if [ -n "$wc_date" ] && gh release download osm-cache -R "$GITHUB_REPOSITORY" -p "$WATER_ASSET" -O water-cache.zip --clobber; then
+    have_cache=1
+    wc_age=$(( ( $(date -u +%s) - $(date -u -d "$wc_date" +%s) ) / 86400 ))
+  fi
+fi
+if [ -n "$have_cache" ] && [ "$wc_age" -le 30 ]; then
+  sub "using cached sea polygons ($wc_age days old)"
+  unzip -q -o water-cache.zip -d "$DATA"
+else
+  ok=1
+  for set in simplified-water-polygons-split-3857:simplified_water_polygons water-polygons-split-3857:water_polygons; do
+    dir=${set%%:*}; layer=${set##*:}
+    if curl -fsSL --retry 3 --connect-timeout 60 -o "$dir.zip" "https://osmdata.openstreetmap.de/download/$dir.zip"; then
+      unzip -q -o "$dir.zip" && rm "$dir.zip"
+      mkdir -p "$DATA/$dir"
+      ogr2ogr -f "ESRI Shapefile" -spat "$MX0" "$MY0" "$MX1" "$MY1" "$DATA/$dir/$layer.shp" "$dir/$layer.shp" -overwrite
+      rm -rf "$dir"
+    else
+      ok=""
+    fi
+  done
+  if [ -n "$ok" ] && [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+    (cd "$DATA" && zip -q -r "$WORK/$WATER_ASSET" simplified-water-polygons-split-3857 water-polygons-split-3857)
+    gh release upload osm-cache -R "$GITHUB_REPOSITORY" "$WORK/$WATER_ASSET" --clobber || echo "WARN: sea polygon cache upload failed"
+  elif [ -z "$ok" ] && [ -n "$have_cache" ]; then
+    sub "osmdata.openstreetmap.de not reachable, using cached sea polygons ($wc_age days old)"
+    unzip -q -o water-cache.zip -d "$DATA"
+  elif [ -z "$ok" ]; then
+    echo "ERROR: sea polygons not available"; exit 1
+  fi
+fi
 
 # ---------------------------------------------------------------- OpenTopoMap preprocessing
 step "OpenTopoMap preprocessing"
