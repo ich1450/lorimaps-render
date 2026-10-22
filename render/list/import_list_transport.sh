@@ -54,8 +54,18 @@ UPDATE planet_osm_line o SET list_dup = true
     AND ST_Length(o.way) > 0
     AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 20)))
          FROM list_walk l WHERE ST_DWithin(l.way, o.way, 20)) > 0.6 * ST_Length(o.way);
+-- OSM vehicle tracks that LIST has as any segment (vehicular track, access road, walking track ...)
+DROP TABLE IF EXISTS list_all;
+CREATE TABLE list_all AS SELECT (ST_Dump(way)).geom AS way FROM list_transport;
+CREATE INDEX list_all_way ON list_all USING gist (way);
+UPDATE planet_osm_line o SET list_dup = true
+  WHERE o.highway = 'track'
+    AND ST_Length(o.way) > 0
+    AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 25)))
+         FROM list_all l WHERE ST_DWithin(l.way, o.way, 25)) > 0.6 * ST_Length(o.way);
 ANALYZE list_transport; ANALYZE planet_osm_line;
 SQL
 psql -d gis -At -c "SELECT 'LIST segments: ' || string_agg(trans_type || '/' || tran_class || '=' || n, ', ') FROM (SELECT trans_type, tran_class, count(*) n FROM list_transport GROUP BY 1, 2 ORDER BY 3 DESC) t;"
 psql -d gis -At -c "SELECT 'LIST surfaces: ' || string_agg(COALESCE(surface_ty,'?') || '=' || n, ', ') FROM (SELECT surface_ty, count(*) n FROM list_transport GROUP BY 1 ORDER BY 2 DESC) t;"
 psql -d gis -At -c "SELECT 'OSM paths duplicated by LIST: ' || count(*) FILTER (WHERE list_dup) || ' of ' || count(*) FROM planet_osm_line WHERE highway IN ('path','footway','bridleway','steps','cycleway');"
+psql -d gis -At -c "SELECT 'OSM tracks duplicated by LIST: ' || count(*) FILTER (WHERE list_dup) || ' of ' || count(*) FROM planet_osm_line WHERE highway = 'track';"

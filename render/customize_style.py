@@ -24,7 +24,8 @@ EARLY = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else 0
 # TASVEG=1: vegetation of Tasmania from TASVEG instead of OpenStreetMap's forest and scrub
 TASVEG = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else 0
 # LIST_TRACKS (Tasmania, LIST Transport Segments): "A" = all tracks and paths from LIST instead of OSM,
-# "B" = walking tracks from LIST, vehicle tracks from OSM (OSM paths that LIST also has are left out)
+# "B" = walking tracks from LIST, vehicle tracks from OSM (OSM paths that LIST also has are left out),
+# "C" = all tracks and paths from LIST, plus the OSM tracks and paths that LIST does not have
 LIST = (sys.argv[4] if len(sys.argv) > 4 else "").strip().upper()
 xml_path = mapnik_dir / "opentopomap.xml"
 xml = xml_path.read_text()
@@ -182,7 +183,8 @@ INVISIBLE = "trail_visibility IN ('no','horrible')"
 PATHLIKE = "highway IN ('path','footway','bridleway','steps','cycleway')"
 
 # OSM ways replaced by LIST data (option)
-OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND list_dup)"}.get(LIST, "false")
+OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND list_dup)",
+            "C": f"((highway = 'track' OR {PATHLIKE}) AND list_dup)"}.get(LIST, "false")
 
 # ways without public access are taken out of OpenTopoMap's road layer and drawn light grey in an own layer;
 # paths not visible on the ground stay normal and get the label "nicht sichtbar"
@@ -238,7 +240,7 @@ def layer(name, styles, sql):
 insert = "\n".join([FADED_STYLE, layer("own-faded-ways", ["own-faded-ways"], FADED_SQL)])
 
 # ---------------------------------------------------------------- LIST Transport Segments (option)
-if LIST in ("A", "B"):
+if LIST in ("A", "B", "C"):
     # OSM names of the replaced ways are not written either
     rn_start = xml.index('<Layer name="road-names-text">')
     rn_end = xml.index("</Layer>", rn_start)
@@ -254,12 +256,13 @@ if LIST in ("A", "B"):
             "WHEN tran_class LIKE 'AS2156 Track Class 5%' OR tran_class LIKE 'AS2156 Track Class 6%' THEN 'walk5' "
             "WHEN trans_type = 'Track' THEN 'walk' ELSE 'road' END")
     SURF = ("CASE WHEN surface_ty = '4WD required' THEN 'nur 4WD' "
+            "WHEN surface_ty = 'Unsealed' AND tran_class = 'Vehicular Track' THEN '' "
             "WHEN surface_ty = 'Unsealed' THEN 'unbefestigt' "
             "WHEN surface_ty = 'Sealed' AND tran_class = 'Vehicular Track' THEN 'asphaltiert' ELSE '' END")
     RESTR = "CASE WHEN user_type IN ('Restricted','Private') THEN 1 ELSE 0 END"
     LIST_SQL = one_line(f"""(SELECT way, {KIND} AS kind, {RESTR} AS restr, {SURF} AS surf, COALESCE(pri_name,'') AS name,
       trans_type, tran_class FROM list_transport) AS lt""")
-    lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST == "A" else [])
+    lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST in ("A", "C") else [])
     DASH = {"walk": "1.1,2", "walk4": "1.1,2,1.1,6", "walk5": "1.1,6", "route": "1,8", "vtrack": None}
     ZOOMS = ([(12, 13, 0.7)] if EARLY else []) + [(14, 14, 0.9), (15, None, 1.0)]
     rules = []
@@ -271,6 +274,12 @@ if LIST in ("A", "B"):
             for restr, col in ((0, "black"), (1, GREY)):
                 rules.append(f'<Rule>{lim}<Filter>[kind] = \'{kind}\' and [restr] = {restr}</Filter>'
                              f'<LineSymbolizer stroke="{col}" stroke-width="{w:.2f}"{d}/></Rule>')
+    # unsealed roads: small grey dots inside the white road (instead of a label)
+    for zf, zt, f in ([(12, 13, 1.3)] if EARLY else []) + [(14, 14, 1.5), (15, None, 1.7)]:
+        lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
+        rules.append(f"<Rule>{lim}<Filter>[kind] = 'road' and [surf] = 'unbefestigt'</Filter>"
+                     f'<LineSymbolizer stroke="#8a8a8a" stroke-width="{f:.2f}" stroke-linecap="round" '
+                     f'stroke-dasharray="0.01,{3.2 * f:.1f}"/></Rule>')
     LIST_LINES = f'<Style name="own-list-lines">{"".join(rules)}</Style>'
     insert += "\n" + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL)
 
@@ -281,7 +290,7 @@ if LIST in ("A", "B"):
  repeat-distance="300" spacing="300" placement="line" max-char-angle-delta="40">[name]</TextSymbolizer></Rule>
 </Style>
 <Style name="own-list-surface">
-<Rule>&maxscale_zoom{13 if EARLY else 14};<Filter>[surf] != ''</Filter>
+<Rule>&maxscale_zoom{13 if EARLY else 14};<Filter>[surf] != '' and [surf] != 'unbefestigt'</Filter>
 <TextSymbolizer fontset-name="sans-condensed-bold" size="8" fill="#5a3a00" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
  placement="line" spacing="280" repeat-distance="200" max-char-angle-delta="25" dy="-6">[surf]</TextSymbolizer></Rule>
 </Style>"""
@@ -469,7 +478,7 @@ OVERLAY_HEAD = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 # walks: all walking tracks highlighted; 60 Great Short Walks and big tree hikes in their own colours, with labels
-if LIST in ("A", "B"):
+if LIST in ("A", "B", "C"):
     WALK_SQL = one_line(f"""(SELECT way FROM list_transport WHERE trans_type = 'Track' OR (trans_type = 'Route' AND tran_class = 'Walking')
       UNION ALL SELECT way FROM planet_osm_line WHERE {PATHLIKE} AND NOT COALESCE(list_dup, false)) AS walks""")
 else:
