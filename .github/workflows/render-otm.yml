@@ -64,6 +64,23 @@ jobs:
             REGION=$r OUT=$GITHUB_WORKSPACE/out bash render/render.sh 2>&1 | tee -a logs/render.log
           done
 
+      - name: Stage big parts
+        # files too big to pass to the merge job as artifacts go to a temporary release
+        if: success()
+        run: |
+          for f in out/*.part*.mbtiles; do
+            [ -f "$f" ] || continue
+            [ "$(stat -c %s "$f")" -gt 400000000 ] || continue
+            gh release view stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+              gh release create stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" --prerelease --latest=false \
+                -t "temporary parts of run ${{ github.run_id }}" -n "deleted after packing" || true
+            for t in 1 2 3 4 5; do
+              gh release upload stage-${{ github.run_id }} "$f" -R "$GITHUB_REPOSITORY" --clobber && break
+              sleep $((t * 20))
+            done
+            rm "$f"
+          done
+
       - name: Upload part
         if: success()
         uses: actions/upload-artifact@v4
@@ -89,6 +106,12 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Use the big temporary disk for the output
+        run: |
+          sudo mkdir -p /mnt/out /mnt/tmp && sudo chown -R "$USER" /mnt/out /mnt/tmp
+          ln -s /mnt/out out
+          df -h / /mnt
 
       - uses: actions/download-artifact@v4
         with:
@@ -116,13 +139,17 @@ jobs:
             fi
             python3 render/merge_mbtiles.py "out/$n.mbtiles" "$base".part*.mbtiles 2>&1 | tee -a logs/merge.log
           done
-          ls -la out | tee -a logs/merge.log
+          if gh release view stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            python3 render/pack_parts.py stage-${{ github.run_id }} ${{ needs.plan.outputs.count }} out /mnt/tmp 2>&1 | tee -a logs/merge.log
+          fi
+          ls -la out/ | tee -a logs/merge.log
 
       - name: Sample tiles for checking
         run: |
           for f in out/*.mbtiles; do
             [ -f "$f" ] || continue
             n=$(basename "$f" .mbtiles)
+            case "$n" in *-part*of*) continue ;; esac   # big maps in parts: no samples
             sqlite3 "$f" "SELECT zoom_level, count(*), sum(length(tile_data))/1024/1024 || ' MB' FROM tiles GROUP BY zoom_level;" > "logs/tile-stats-$n.txt"
             ls -la "$f" >> "logs/tile-stats-$n.txt"
             python3 - "$f" "$n" <<'EOF'
@@ -162,3 +189,7 @@ jobs:
           name: Offline map – ${{ github.run_number }}
           body: OpenTopoMap-style offline map (MBTiles, 512 px WebP tiles). Import it in LoriMaps via the map menu → "+ Karte hinzufügen".
           files: out/*.mbtiles
+
+      - name: Delete temporary parts
+        if: success()
+        run: gh release delete stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" --cleanup-tag -y 2>/dev/null || true

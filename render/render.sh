@@ -386,9 +386,11 @@ fi
   # transparent overlays (MBTiles type=overlay), selectable in the app's map menu
   [ "${MODE:-tiles}" = tiles ] && for ov in ${OVERLAYS:-}; do
     step "Rendering overlay $ov"
+    # own highest zoom per overlay (OVERLAY_MAXZOOM_<name>); the app enlarges the last level beyond it
+    omz_var="OVERLAY_MAXZOOM_$ov"; omz=${!omz_var:-$MAXZOOM}; [ "$omz" -gt "$MAXZOOM" ] && omz=$MAXZOOM
     python3 "$HERE/render_tiles.py" --shard "${SHARD:-0}" --shards "${SHARDS:-1}" --overlay \
       --style "overlay-$ov.xml" --out "$OUT/$NAME-$ov$PART.mbtiles" \
-      --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$MAXZOOM" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
+      --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$omz" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
       --name "$TITLE – $ov" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
   done
 # example spots (TASVEG) for the check images of the workflow

