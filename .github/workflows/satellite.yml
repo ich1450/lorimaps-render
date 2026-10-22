@@ -1,0 +1,75 @@
+name: Satellite map
+# Tasmania aerial photo map from theLIST "Orthophoto" (© State of Tasmania, CC BY-NC-ND 3.0 AU: tiles unchanged,
+# non-commercial use only). The tiles are copied unchanged into MBTiles files, split by rows into parts below the
+# 2 GB release file limit; the app shows all parts of a map ("...-part1of6.mbtiles" ...) together as one map.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/satellite.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: satellite
+  cancel-in-progress: false
+env:
+  NAME: tasmania-satellit-z16
+  BBOX: "144.55 -43.70 148.40 -40.60"
+  MINZOOM: "0"
+  MAXZOOM: "16"
+  PARTS: "6"
+  TAG: sat-1
+  URL: "https://services.thelist.tas.gov.au/arcgis/rest/services/Basemaps/Orthophoto/MapServer/tile/{z}/{y}/{x}"
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sample tiles (check of the tile scheme)
+        run: |
+          mkdir -p logs
+          # Hobart (Derwent bridge) and Wineglass Bay: zoom 12 and 15 as XYZ tiles
+          for t in 12/3724/2588 15/29794/20710 12/3735/2577; do
+            IFS=/ read z x y <<< "$t"
+            u=$(echo "$URL" | sed "s/{z}/$z/; s/{x}/$x/; s/{y}/$y/")
+            curl -fsS -o "logs/${z}_${x}_${y}.jpg" "$u" || echo "missing $t"
+          done
+          ls -l logs
+      - name: Publish samples
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "satellite samples ${{ github.run_id }}" sat-logs-0
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view $TAG -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create $TAG -R "$GITHUB_REPOSITORY" \
+            --latest=false -t "Tasmanien Satellit (Orthophoto, bis Zoom 16)" \
+            -n "Luftbilder von theLIST Orthophoto, © State of Tasmania, CC BY-NC-ND 3.0 AU (nur nicht-kommerzielle Nutzung, Kacheln unverändert). Alle Teile herunterladen und importieren: die App zeigt sie zusammen als eine Karte."
+  fetch:
+    needs: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download tiles
+        run: |
+          mkdir -p logs
+          set -o pipefail
+          python3 render/data/fetch_tiles.py "$URL" $MINZOOM $MAXZOOM $BBOX $(( ${{ matrix.part }} - 1 )) $PARTS \
+            "$NAME-part${{ matrix.part }}of$PARTS.mbtiles" --threads 8 \
+            --name "Tasmanien Satellit" \
+            --attribution "Luftbild © State of Tasmania (theLIST Orthophoto), CC BY-NC-ND 3.0 AU" 2>&1 | tee logs/part${{ matrix.part }}.log
+          ls -l *.mbtiles | tee -a logs/part${{ matrix.part }}.log
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload $TAG "$NAME-part${{ matrix.part }}of$PARTS.mbtiles" -R "$GITHUB_REPOSITORY" --clobber
+      - name: Publish log
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "satellite part ${{ matrix.part }} ${{ github.run_id }} ${{ job.status }}" sat-logs-${{ matrix.part }}
