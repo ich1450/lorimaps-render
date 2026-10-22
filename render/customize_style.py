@@ -474,7 +474,7 @@ if LIST in ("A", "B"):
       UNION ALL SELECT way FROM planet_osm_line WHERE {PATHLIKE} AND NOT COALESCE(list_dup, false)) AS walks""")
 else:
     WALK_SQL = one_line(f"(SELECT way FROM planet_osm_line WHERE {PATHLIKE}) AS walks")
-GSW_SQL = one_line("""(SELECT way, nr, name, grade, nr || '  ' || name || '  · Grad ' || grade AS label FROM gsw_tracks) AS gsw""")
+GSW_SQL = one_line("""(SELECT way, nr, name, nr || ' ' || name || '  · Level ' || level || ' · ' || time || ' · ' || distance AS label FROM gsw_tracks) AS gsw""")
 GSW_START_SQL = one_line("""(SELECT DISTINCT ON (nr) ST_StartPoint(ST_GeometryN(way, 1)) AS way, nr FROM gsw_tracks ORDER BY nr, ST_Length(way) DESC) AS gsws""")
 BTH_SQL = "(SELECT way, name FROM bigtree_hikes) AS bth"
 GSW_COL, BTH_COL, WALK_COL = "#e8590c", "#7b2fa8", "#d6336c"
