@@ -8,16 +8,34 @@ set -euo pipefail
 WORK="$1"; W="$2"; S="$3"; E="$4"; N="$5"
 mkdir -p "$WORK/list" && cd "$WORK/list"
 
-python3 - "$W" "$S" "$E" "$N" <<'EOF'
+# The whole state is downloaded once (about 290 000 segments) and kept for 14 days as release asset
+# "osm-cache/list-transport-tas-YYYYMMDD.geojson.gz"; every render (and every shard) only clips it.
+CACHED=""
+if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+  export GH_TOKEN="$GITHUB_TOKEN"
+  CACHED=$(gh release view osm-cache -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' 2>/dev/null \
+    | grep "^list-transport-tas-" | sort | tail -1 || true)
+  if [ -n "$CACHED" ]; then
+    day=$(echo "$CACHED" | sed -E 's/.*-([0-9]{8})\.geojson\.gz/\1/')
+    age=$(( ( $(date -u +%s) - $(date -u -d "$day" +%s) ) / 86400 ))
+    if [ "$age" -le 14 ] && gh release download osm-cache -R "$GITHUB_REPOSITORY" -p "$CACHED" -O tas.geojson.gz --clobber; then
+      echo "using cached LIST data $CACHED ($age days old)"
+      gunzip -f tas.geojson.gz
+    else
+      CACHED=""
+    fi
+  fi
+fi
+if [ -z "$CACHED" ]; then
+  echo "downloading LIST transport segments for all of Tasmania"
+python3 - <<'EOF'
 import json, sys, time, urllib.parse, urllib.request
-w, s, e, n = sys.argv[1:5]
 url = "https://services.thelist.tas.gov.au/arcgis/rest/services/Public/OpenDataWFS/MapServer/42/query"
 fields = "TRANS_TYPE,TRAN_CLASS,USER_TYPE,SURFACE_TY,STATUS,PRI_NAME,SEC_NAME,TOUR_CLASS"
 features, offset = [], 0
 while True:
     q = urllib.parse.urlencode({
-        "where": "1=1", "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope",
-        "inSR": 4326, "spatialRel": "esriSpatialRelIntersects", "outFields": fields, "outSR": 4326,
+        "where": "1=1", "outFields": fields, "outSR": 4326,
         "orderByFields": "OBJECTID", "resultOffset": offset, "resultRecordCount": 2000, "f": "geojson"})
     for attempt in range(5):
         try:
@@ -35,8 +53,20 @@ while True:
     if len(feats) < 2000 and not page.get("exceededTransferLimit"):
         break
     offset += len(feats)
-json.dump({"type": "FeatureCollection", "features": features}, open("list_transport.geojson", "w"))
+json.dump({"type": "FeatureCollection", "features": features}, open("tas.geojson", "w"))
 EOF
+  if [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+    name="list-transport-tas-$(date -u +%Y%m%d).geojson.gz"
+    gzip -c tas.geojson > "$name"
+    gh release upload osm-cache -R "$GITHUB_REPOSITORY" "$name" --clobber || echo "WARN: LIST cache upload failed"
+    for old in $(gh release view osm-cache -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | grep "^list-transport-tas-" | grep -v "^$name$" || true); do
+      gh release delete-asset osm-cache "$old" -R "$GITHUB_REPOSITORY" -y || true
+    done
+    rm -f "$name"
+  fi
+fi
+ogr2ogr -f GeoJSON list_transport.geojson tas.geojson -spat "$W" "$S" "$E" "$N" -spat_srs EPSG:4326
+rm -f tas.geojson
 
 ogr2ogr -f PostgreSQL PG:dbname=gis list_transport.geojson -nln list_transport -overwrite \
   -t_srs EPSG:3857 -lco GEOMETRY_NAME=way -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST
