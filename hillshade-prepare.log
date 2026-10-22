@@ -1,0 +1,42 @@
+level 14: 181 x 197 tiles = 35657, 46336 x 50432 px
+/usr/lib/python3/dist-packages/osgeo/gdal.py:312: FutureWarning: Neither gdal.UseExceptions() nor gdal.DontUseExceptions() has been explicitly called. In GDAL 4.0, exceptions will be enabled by default.
+  warnings.warn(
+  row 1/197, 181 tiles with data, 0.2 min
+  row 11/197, 1991 tiles with data, 1.6 min
+  row 21/197, 3801 tiles with data, 2.9 min
+  row 31/197, 5611 tiles with data, 4.8 min
+  row 41/197, 7421 tiles with data, 6.6 min
+  row 51/197, 9231 tiles with data, 8.3 min
+  row 61/197, 11041 tiles with data, 10.0 min
+  row 71/197, 12851 tiles with data, 11.6 min
+  row 81/197, 14661 tiles with data, 13.2 min
+  row 91/197, 16471 tiles with data, 14.7 min
+  row 101/197, 18281 tiles with data, 16.4 min
+  row 111/197, 20091 tiles with data, 17.9 min
+  row 121/197, 21901 tiles with data, 19.5 min
+  row 131/197, 23711 tiles with data, 21.1 min
+  row 141/197, 25521 tiles with data, 22.5 min
+  row 151/197, 27331 tiles with data, 24.0 min
+  row 161/197, 29141 tiles with data, 25.4 min
+  row 171/197, 30951 tiles with data, 26.8 min
+  row 181/197, 32761 tiles with data, 28.3 min
+  row 191/197, 34571 tiles with data, 29.6 min
+  row 197/197, 35657 tiles with data, 30.5 min
+building overviews
+done
+Corner Coordinates:
+Upper Left  (16084796.736,-4945781.478) (144d29'31.88"E, 40d32'49.92"S)
+Lower Left  (16084796.736,-5427640.504) (144d29'31.88"E, 43d45'18.81"S)
+Upper Right (16527520.004,-4945781.478) (148d28' 9.26"E, 40d32'49.92"S)
+Lower Right (16527520.004,-5427640.504) (148d28' 9.26"E, 43d45'18.81"S)
+Center      (16306158.370,-5186710.991) (146d28'50.57"E, 42d10'17.57"S)
+Band 1 Block=256x256 Type=Byte, ColorInterp=Gray
+  Minimum=0.000, Maximum=255.000, Mean=203.003, StdDev=55.997
+  Overviews: 23168x25216, 11584x12608, 5792x6304, 2896x3152, 1448x1576, 724x788
+  Metadata:
+    STATISTICS_MAXIMUM=255
+    STATISTICS_MEAN=203.00273141354
+    STATISTICS_MINIMUM=0
+    STATISTICS_STDDEV=55.997445595049
+    STATISTICS_VALID_PERCENT=100
+-rw-r--r-- 1 runner runner 392206838 Oct 22 08:27 list_hillshade_z14.tif
