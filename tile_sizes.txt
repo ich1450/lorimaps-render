@@ -1,0 +1,24 @@
+HillshadeGrey z10: 120 tiles, 0 missing, avg 15.9 KB, formats {'jpg': 120}
+HillshadeGrey z11: 120 tiles, 0 missing, avg 14.7 KB, formats {'jpg': 120}
+HillshadeGrey z12: 120 tiles, 0 missing, avg 14.1 KB, formats {'jpg': 120}
+HillshadeGrey z13: 120 tiles, 0 missing, avg 13.1 KB, formats {'jpg': 120}
+HillshadeGrey z14: 120 tiles, 0 missing, avg 12.5 KB, formats {'jpg': 120}
+HillshadeGrey z15: 120 tiles, 0 missing, avg 12.7 KB, formats {'jpg': 120}
+HillshadeGrey z16: 120 tiles, 0 missing, avg 10.5 KB, formats {'jpg': 120}
+HillshadeGrey z17: 113 tiles, 7 missing, avg 9.4 KB, formats {'jpg': 113}
+HillshadeGrey z18: 116 tiles, 4 missing, avg 7.0 KB, formats {'jpg': 116}
+Orthophoto z12: 120 tiles, 0 missing, avg 10.7 KB, formats {'jpg': 120}
+Orthophoto z13: 120 tiles, 0 missing, avg 12.0 KB, formats {'jpg': 120}
+Orthophoto z14: 120 tiles, 0 missing, avg 12.5 KB, formats {'jpg': 120}
+Orthophoto z15: 120 tiles, 0 missing, avg 13.9 KB, formats {'jpg': 120}
+Orthophoto z16: 120 tiles, 0 missing, avg 14.1 KB, formats {'jpg': 120}
+Orthophoto z17: 120 tiles, 0 missing, avg 13.4 KB, formats {'jpg': 108, 'png': 12}
+Orthophoto z18: 120 tiles, 0 missing, avg 11.8 KB, formats {'jpg': 108, 'png': 12}
+Orthophoto z19: 120 tiles, 0 missing, avg 9.6 KB, formats {'jpg': 108, 'png': 12}
+AerialPhoto2026 z14: 33 tiles, 87 missing, avg 32.3 KB, formats {'png': 28, 'jpg': 5}
+AerialPhoto2026 z15: 24 tiles, 96 missing, avg 33.9 KB, formats {'jpg': 8, 'png': 16}
+AerialPhoto2026 z16: 21 tiles, 99 missing, avg 17.9 KB, formats {'jpg': 12, 'png': 9}
+AerialPhoto2026 z17: 18 tiles, 102 missing, avg 12.5 KB, formats {'jpg': 13, 'png': 5}
+AerialPhoto2026 z18: 16 tiles, 104 missing, avg 12.6 KB, formats {'jpg': 13, 'png': 3}
+AerialPhoto2026 z19: 16 tiles, 104 missing, avg 10.0 KB, formats {'jpg': 13, 'png': 3}
+AerialPhoto2026 z20: 14 tiles, 106 missing, avg 8.6 KB, formats {'jpg': 13, 'png': 1}
