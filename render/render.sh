@@ -245,7 +245,10 @@ if [ -n "$have_cache" ] && [ "$wc_age" -le 30 ]; then
   unzip -q -o water-cache.zip -d "$DATA"
 else
   ok=1
+  # one quick check first: when the server is unreachable, every download attempt waits a minute (8 minutes in all)
+  curl -fsS -o /dev/null --connect-timeout 20 --max-time 40 https://osmdata.openstreetmap.de/ || ok=""
   for set in simplified-water-polygons-split-3857:simplified_water_polygons water-polygons-split-3857:water_polygons; do
+    [ -n "$ok" ] || break
     dir=${set%%:*}; layer=${set##*:}
     if curl -fsSL --retry 3 --connect-timeout 60 -o "$dir.zip" "https://osmdata.openstreetmap.de/download/$dir.zip"; then
       unzip -q -o "$dir.zip" && rm "$dir.zip"
@@ -273,6 +276,11 @@ else
       ogr2ogr -f "ESRI Shapefile" "$DATA/$dir/$layer.shp" coast.db water_polygons -nln "$layer" -overwrite
     done
     ls -la "$DATA"/water-polygons-split-3857
+    # keep the result: the next renders of this area do not need to build it again
+    if [ -s "$DATA/water-polygons-split-3857/water_polygons.shp" ] && [ -n "${GITHUB_TOKEN:-}" ] && [ -n "${GITHUB_REPOSITORY:-}" ]; then
+      (cd "$DATA" && zip -q -r "$WORK/$WATER_ASSET" simplified-water-polygons-split-3857 water-polygons-split-3857)
+      gh release upload osm-cache -R "$GITHUB_REPOSITORY" "$WORK/$WATER_ASSET" --clobber || echo "WARN: sea polygon cache upload failed"
+    fi
   fi
 fi
 
