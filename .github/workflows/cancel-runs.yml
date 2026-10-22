@@ -1,0 +1,23 @@
+name: Cancel renders
+# Cancels the render runs of the commits listed in SHAS (edit the list and push this file).
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cancel-runs.yml']
+  workflow_dispatch:
+permissions:
+  actions: write
+jobs:
+  cancel:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SHAS: "59dc8cf1afb723691d3e357c3b731fce6d2a2818 1719da4b10aa55345da4cfab41662c0ff2f38543"
+    steps:
+      - run: |
+          for sha in $SHAS; do
+            for id in $(gh run list -R "$GITHUB_REPOSITORY" --workflow render-otm.yml --commit "$sha" --json databaseId,status \
+                        -q '.[] | select(.status != "completed") | .databaseId'); do
+              echo "cancel run $id ($sha)"; gh run cancel "$id" -R "$GITHUB_REPOSITORY" || true
+            done
+          done
