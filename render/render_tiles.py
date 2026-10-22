@@ -115,6 +115,12 @@ def main():
     p.add_argument("--processes", type=int, default=os.cpu_count())
     p.add_argument("--shard", type=int, default=0, help="render only this part (0-based) ...")
     p.add_argument("--shards", type=int, default=1, help="... of this many parts (for parallel jobs)")
+    p.add_argument("--land-table", default="", help="table in database gis with land polygons (column way): "
+                   "tiles above --land-zoom are only rendered inside land tiles of that zoom (open sea is left out; "
+                   "the app enlarges the sea tile of the lower zoom level there)")
+    p.add_argument("--land-zoom", type=int, default=11)
+    p.add_argument("--deadline", type=float, default=0, help="stop at this time (seconds since 1970) and keep "
+                   "what is rendered so far (GitHub ends jobs after 6 hours and the whole result would be lost)")
     args = p.parse_args()
 
     register_fonts()
@@ -123,6 +129,25 @@ def main():
 
     bbox = [float(v) for v in args.bbox.split(",")]
     tiles = list(tiles_for(bbox, args.minzoom, args.maxzoom))
+    if args.land_table and args.maxzoom > args.land_zoom:
+        lz = args.land_zoom
+        x0, y0 = lonlat_to_tile(bbox[0], bbox[3], lz)
+        x1, y1 = lonlat_to_tile(bbox[2], bbox[1], lz)
+        sql = (f"SELECT x || ',' || y FROM generate_series({x0},{x1}) x, generate_series({y0},{y1}) y, "
+               f"LATERAL (SELECT 40075016.68557849 / (1 << {lz}) AS s) c "
+               f"WHERE EXISTS (SELECT 1 FROM {args.land_table} t WHERE t.way && ST_MakeEnvelope("
+               f"-20037508.342789244 + x * s, 20037508.342789244 - (y + 1) * s, "
+               f"-20037508.342789244 + (x + 1) * s, 20037508.342789244 - y * s, 3857))")
+        import subprocess
+        res = subprocess.run(["psql", "-d", "gis", "-At", "-c", sql], capture_output=True, text=True)
+        if res.returncode == 0:
+            land = {tuple(map(int, l.split(","))) for l in res.stdout.split()}
+            before = len(tiles)
+            tiles = [t for t in tiles if t[0] <= lz or (t[1] >> (t[0] - lz), t[2] >> (t[0] - lz)) in land]
+            print(f"land filter ({args.land_table}, zoom {lz}): {len(land)} land tiles, "
+                  f"{before - len(tiles)} sea tiles left out", flush=True)
+        else:
+            print("WARN: land filter failed: " + res.stderr.strip(), flush=True)
     if args.shards > 1:
         # blocks of 8x8 tiles stay together (shared database pages and caches)
         tiles = [t for t in tiles if ((t[1] >> 3) * 7919 + (t[2] >> 3) * 104729 + t[0]) % args.shards == args.shard]
@@ -184,6 +209,9 @@ def main():
                 tid = hashlib.md5(data).hexdigest()
                 db.execute("INSERT OR IGNORE INTO images VALUES (?, ?)", (tid, sqlite3.Binary(data)))
                 db.execute("INSERT INTO map VALUES (?, ?, ?, ?)", (z, x, (2 ** z - 1) - y, tid))
+            if args.deadline and now > args.deadline:
+                print(f"WARN: time limit reached, stopping after {done} of {len(tiles)} tiles (file incomplete)", flush=True)
+                break
             if done % 500 == 0 or done == len(tiles):
                 db.commit()
                 el = time.time() - start

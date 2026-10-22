@@ -34,7 +34,7 @@ jobs:
   render:
     needs: plan
     runs-on: ubuntu-24.04
-    timeout-minutes: 340
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +55,7 @@ jobs:
         run: |
           mkdir -p logs
           set -o pipefail
+          export JOB_START=$(date +%s)
           # intermediate logs every 5 minutes (branch render-logs-shard<k>)
           ( while sleep 300; do bash render/push_logs.sh logs "run ${{ github.run_id }} shard $SHARD running $(date -u +%H:%M)" render-logs-shard$SHARD || true; done ) &
           source render/region.env
@@ -70,7 +71,7 @@ jobs:
         run: |
           for f in out/*.part*.mbtiles; do
             [ -f "$f" ] || continue
-            [ "$(stat -c %s "$f")" -gt 400000000 ] || continue
+            [ "$(stat -c %s "$f")" -gt 150000000 ] || continue
             gh release view stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
               gh release create stage-${{ github.run_id }} -R "$GITHUB_REPOSITORY" --prerelease --latest=false \
                 -t "temporary parts of run ${{ github.run_id }}" -n "deleted after packing" || true

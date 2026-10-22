@@ -447,8 +447,10 @@ BIG_TREES = f"""<Style name="own-big-trees">
 xml = patch("</Map>", BIG_TREES + "</Map>", "giant trees (golden stars)")
 
 # ---------------------------------------------------------------- 5+6) camp sites, locked gates (on top)
-CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 'camp_site'
-  UNION ALL SELECT ST_PointOnSurface(way) AS way, name FROM planet_osm_polygon WHERE tourism = 'camp_site') AS camps""")
+# !bbox! inside both parts: otherwise every tile computes the points of all camp site areas of the region
+CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 'camp_site' AND way && !bbox!
+  UNION ALL SELECT ST_PointOnSurface(way) AS way, name FROM planet_osm_polygon
+  WHERE tourism = 'camp_site' AND way && !bbox!) AS camps""")
 GATES_SQL = one_line("""(SELECT way FROM planet_osm_point
   WHERE barrier IN ('gate','lift_gate','swing_gate','chain','bar') AND locked = 'yes') AS lockedgates""")
 TOP = f"""<Style name="own-camps">

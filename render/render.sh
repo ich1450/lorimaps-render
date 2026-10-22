@@ -377,10 +377,17 @@ else
   step "Rendering tiles"
   [ -n "${FONT:-}" ] && python3 "$HERE/render_preview.py" --style opentopomap.xml --set-font "$FONT"
   PART=""; [ "${SHARDS:-1}" -gt 1 ] && PART=".part$SHARD"
+  # leave out open sea above zoom 11 (TASVEG covers all land of Tasmania)
+  LAND_ARGS=""; [ "${TASVEG:-0}" = 1 ] && LAND_ARGS="--land-table tasveg --land-zoom 11"
+  # GitHub jobs end after 6 hours: stop in time and keep the tiles (JOB_START is set by the workflow)
+  BASE_DEADLINE=""; OV_DEADLINE=""
+  if [ -n "${JOB_START:-}" ]; then
+    BASE_DEADLINE="--deadline $((JOB_START + 285 * 60))"; OV_DEADLINE="--deadline $((JOB_START + 330 * 60))"
+  fi
   python3 "$HERE/render_tiles.py" --shard "${SHARD:-0}" --shards "${SHARDS:-1}" \
     --style opentopomap.xml --out "$OUT/$NAME-otm$PART.mbtiles" \
     --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$MAXZOOM" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
-    --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
+    --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}" $LAND_ARGS $BASE_DEADLINE
 fi
 
   # transparent overlays (MBTiles type=overlay), selectable in the app's map menu
@@ -391,7 +398,7 @@ fi
     python3 "$HERE/render_tiles.py" --shard "${SHARD:-0}" --shards "${SHARDS:-1}" --overlay \
       --style "overlay-$ov.xml" --out "$OUT/$NAME-$ov$PART.mbtiles" \
       --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$omz" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
-      --name "$TITLE – $ov" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
+      --name "$TITLE – $ov" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}" $LAND_ARGS $OV_DEADLINE
   done
 # example spots (TASVEG) for the check images of the workflow
 [ -f "$WORK/tasveg/sample_points.txt" ] && cp "$WORK/tasveg/sample_points.txt" "$OUT/samples-$NAME-otm.txt"
