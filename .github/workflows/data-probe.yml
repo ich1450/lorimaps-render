@@ -1,0 +1,24 @@
+name: Data probe
+# Runs render/data/probe.py on GitHub (servers that are not reachable from the development machine).
+on:
+  push:
+    branches: [main]
+    paths: ['render/data/probe.py', '.github/workflows/data-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          mkdir -p logs
+          python3 render/data/probe.py logs 2>&1 | tee logs/probe.log
+      - name: Publish logs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "data-probe ${{ github.run_id }} ${{ job.status }}" data-logs
