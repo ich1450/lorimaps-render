@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      SHAS: "59dc8cf1afb723691d3e357c3b731fce6d2a2818 1719da4b10aa55345da4cfab41662c0ff2f38543"
+      SHAS: "4aee87a3b7472112be9e53d65644dcbe96897c1a"
     steps:
       - run: |
           for sha in $SHAS; do
