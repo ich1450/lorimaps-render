@@ -521,12 +521,24 @@ print("written: overlay-walks.xml")
 
 # walkability from the own TASVEG classification (Einteilung B): hatching
 if TASVEG:
+    # The hatching is made as real lines (not a pattern image: pattern tiles left gaps and dashes at their
+    # edges): per map tile, parallel 45° lines in map coordinates (spacing in output pixels, globally aligned,
+    # so they join across tiles), cut to the TASVEG areas of each walkability class.
+    HATCH_SQL = one_line("""(WITH b AS (SELECT cls_b, ST_Union(way) AS way FROM tasveg WHERE cls_b >= 2 AND way && !bbox! GROUP BY cls_b),
+      p AS (SELECT cls_b, way, (CASE cls_b WHEN 2 THEN 60 WHEN 3 THEN 26 ELSE 20 END) * GREATEST(!pixel_width!, 0.01) AS s,
+            ST_XMin(!bbox!) AS x0, ST_YMin(!bbox!) AS y0, ST_XMax(!bbox!) AS x1, ST_YMax(!bbox!) AS y1 FROM b),
+      l AS (SELECT cls_b, way, ST_MakeLine(ST_MakePoint(x0, x0 + k * s), ST_MakePoint(x1, x1 + k * s)) AS g
+              FROM p, generate_series(floor((y0 - x1) / s)::bigint, ceil((y1 - x0) / s)::bigint) AS k
+            UNION ALL
+            SELECT cls_b, way, ST_MakeLine(ST_MakePoint(x0, k * s - x0), ST_MakePoint(x1, k * s - x1))
+              FROM p, generate_series(floor((y0 + x0) / s)::bigint, ceil((y1 + x1) / s)::bigint) AS k WHERE cls_b = 4)
+      SELECT cls_b, ST_Intersection(way, ST_SetSRID(ST_Collect(g), 3857)) AS way FROM l GROUP BY cls_b, way) AS wb""")
     walkability_xml = OVERLAY_HEAD + """
 <Style name="ov-walkability">
-<Rule>&maxscale_zoom10;<Filter>[cls_b] = 2</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_medium.svg" alignment="global" opacity="0.45"/></Rule>
-<Rule>&maxscale_zoom10;<Filter>[cls_b] = 3</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_hard.svg" alignment="global" opacity="0.5"/></Rule>
-<Rule>&maxscale_zoom10;<Filter>[cls_b] = 4</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_impassable.svg" alignment="global" opacity="0.55"/></Rule>
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 2</Filter><LineSymbolizer stroke="#4a3a20" stroke-opacity="0.5" stroke-width="0.6"/></Rule>
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 3</Filter><LineSymbolizer stroke="#4a3a20" stroke-opacity="0.5" stroke-width="0.6"/></Rule>
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 4</Filter><LineSymbolizer stroke="#6a2020" stroke-opacity="0.5" stroke-width="0.55"/></Rule>
 </Style>
-""" + layer("ov-walkability", ["ov-walkability"], "(SELECT cls_b, ST_Union(way) AS way FROM tasveg WHERE cls_b >= 2 AND way && !bbox! GROUP BY cls_b) AS wb") + "\n</Map>\n"
+""" + layer("ov-walkability", ["ov-walkability"], HATCH_SQL) + "\n</Map>\n"
     (mapnik_dir / "overlay-walkability.xml").write_text(walkability_xml)
     print("written: overlay-walkability.xml")
