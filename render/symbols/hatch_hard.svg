@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 8 8">
-  <!-- walkability "Schwer": denser lines rising to the right (45°) -->
-  <g stroke="#3a2a10" stroke-opacity="0.5" stroke-width="1" stroke-linecap="square">
-    <path d="M0,8 L8,0"/><path d="M-1,1 L1,-1"/><path d="M7,9 L9,7"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">
+  <!-- walkability "Schwer": denser lines rising to the right (45°) (solid colour, lines run past the tile edge so neighbouring tiles join without seams) -->
+  <g stroke="#5b4a2e" stroke-width="1" stroke-linecap="butt" fill="none">
+    <path d="M-2,12 L12,-2 M-2,2 L2,-2 M8,12 L12,8"/>
   </g>
 </svg>
