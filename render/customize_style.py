@@ -261,7 +261,7 @@ if LIST in ("A", "B", "C"):
             "WHEN surface_ty = 'Sealed' AND tran_class = 'Vehicular Track' THEN 'asphaltiert' ELSE '' END")
     RESTR = "CASE WHEN user_type IN ('Restricted','Private') THEN 1 ELSE 0 END"
     LIST_SQL = one_line(f"""(SELECT way, {KIND} AS kind, {RESTR} AS restr, {SURF} AS surf, COALESCE(pri_name,'') AS name,
-      trans_type, tran_class FROM list_transport) AS lt""")
+      trans_type, tran_class, CASE WHEN on_osm_track THEN 1 ELSE 0 END AS ontrack FROM list_transport) AS lt""")
     lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST in ("A", "C") else [])
     DASH = {"walk": "1.1,2", "walk4": "1.1,2,1.1,6", "walk5": "1.1,6", "route": "1,8", "vtrack": None}
     ZOOMS = ([(12, 13, 0.7)] if EARLY else []) + [(14, 14, 0.9), (15, None, 1.0)]
@@ -277,7 +277,7 @@ if LIST in ("A", "B", "C"):
     # unsealed roads: small grey dots inside the white road (instead of a label)
     for zf, zt, f in ([(12, 13, 1.3)] if EARLY else []) + [(14, 14, 1.5), (15, None, 1.7)]:
         lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
-        rules.append(f"<Rule>{lim}<Filter>[kind] = 'road' and [surf] = 'unbefestigt'</Filter>"
+        rules.append(f"<Rule>{lim}<Filter>[kind] = 'road' and [surf] = 'unbefestigt' and [ontrack] = 0</Filter>"
                      f'<LineSymbolizer stroke="#8a8a8a" stroke-width="{f:.2f}" stroke-linecap="round" '
                      f'stroke-dasharray="0.01,{3.2 * f:.1f}"/></Rule>')
     LIST_LINES = f'<Style name="own-list-lines">{"".join(rules)}</Style>'
