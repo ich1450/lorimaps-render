@@ -190,6 +190,20 @@ gdaldem hillshade -q -z 5 -compute_edges -co TILED=YES -co COMPRESS=JPEG warp-50
 gdaldem hillshade -q -z 2 -compute_edges -co TILED=YES -co COMPRESS=JPEG warp-90.tif hillshade-90.tif
 gdaldem hillshade -q -z 2 -compute_edges -co TILED=YES -co COMPRESS=JPEG warp-30.tif hillshade-30m-jpeg.tif
 
+# Tasmania: sharper hillshade from theLIST (HillshadeGrey, about 7 m, CC BY 3.0 AU) instead of the 30 m one
+# (used from zoom 9). Release asset made by .github/workflows/hillshade-prepare.yml.
+if [ "${LIST_HILLSHADE:-0}" != 0 ]; then
+  LHS="$WORK/lhs/list_hillshade_z${LIST_HILLSHADE_LEVEL:-14}.tif"
+  mkdir -p "$WORK/lhs"
+  [ -s "$LHS" ] || GH_TOKEN="${GITHUB_TOKEN:-}" gh release download hillshade-data -R "$GITHUB_REPOSITORY" \
+      -p "$(basename "$LHS")" -D "$WORK/lhs" --clobber || echo "WARN: LIST hillshade not available"
+  if [ -s "$LHS" ]; then
+    python3 "$HERE/data/remap_hillshade.py" "$LHS" hillshade-30m-jpeg.tif warp-30.tif "$BW" "$BS" "$BE" "$BN" hillshade-list.tif \
+      && mv hillshade-list.tif hillshade-30m-jpeg.tif && echo "using LIST hillshade" \
+      || echo "WARN: LIST hillshade failed, keeping the 30 m hillshade"
+  fi
+fi
+
 # overviews: lower zoom levels read reduced rasters instead of the full 30 m data
 for f in hillshade-*.tif relief-*.tif; do
   gdaladdo -q -r average --config COMPRESS_OVERVIEW DEFLATE "$f" 2 4 8 16 32 64 || echo "WARN: no overviews for $f"
