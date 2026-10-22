@@ -1,0 +1,41 @@
+name: Prepare LIST hillshade
+# Downloads theLIST HillshadeGrey (CC BY 3.0 AU) for Tasmania as one GeoTIFF and publishes it as
+# release asset "hillshade-data/list_hillshade_z<level>.tif" (used by render.sh instead of the 30 m hillshade).
+on:
+  push:
+    branches: [main]
+    paths: ['render/data/prepare_hillshade.py', '.github/workflows/hillshade-prepare.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      LEVEL: "14"
+      BBOX: "144.50 -43.75 148.45 -40.55"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq python3-gdal python3-numpy python3-pil gdal-bin
+      - name: Download
+        run: |
+          mkdir -p logs
+          set -o pipefail
+          python3 render/data/prepare_hillshade.py $LEVEL $BBOX list_hillshade_z$LEVEL.tif 12 2>&1 | tee logs/hillshade-prepare.log
+          gdalinfo -stats list_hillshade_z$LEVEL.tif | tail -15 | tee -a logs/hillshade-prepare.log
+          ls -l list_hillshade_z$LEVEL.tif | tee -a logs/hillshade-prepare.log
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view hillshade-data -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create hillshade-data -R "$GITHUB_REPOSITORY" -t "LIST hillshade data" \
+              -n "theLIST HillshadeGrey, © State of Tasmania, CC BY 3.0 AU"
+          gh release upload hillshade-data list_hillshade_z$LEVEL.tif -R "$GITHUB_REPOSITORY" --clobber
+      - name: Publish log
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "hillshade-prepare ${{ github.run_id }} ${{ job.status }}" hillshade-logs
