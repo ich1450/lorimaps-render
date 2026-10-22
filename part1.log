@@ -1,0 +1,20 @@
+shard 0/6: rows 40868..40994 of 40868..41630 at zoom 16
+  zoom 0: 1 rows done; 1/1 tiles, 0 failed, 0.00 GB, 0.0 min
+  zoom 1: 1 rows done; 2/2 tiles, 0 failed, 0.00 GB, 0.0 min
+  zoom 2: 1 rows done; 3/3 tiles, 0 failed, 0.00 GB, 0.0 min
+  zoom 3: 2 rows done; 5/5 tiles, 0 failed, 0.00 GB, 0.1 min
+  zoom 4: 2 rows done; 7/7 tiles, 0 failed, 0.00 GB, 0.1 min
+  zoom 5: 2 rows done; 11/11 tiles, 0 failed, 0.00 GB, 0.1 min
+  zoom 6: 2 rows done; 15/15 tiles, 0 failed, 0.00 GB, 0.2 min
+  zoom 7: 2 rows done; 19/19 tiles, 0 failed, 0.00 GB, 0.2 min
+  zoom 8: 2 rows done; 27/27 tiles, 0 failed, 0.00 GB, 0.2 min
+  zoom 9: 2 rows done; 41/41 tiles, 0 failed, 0.00 GB, 0.2 min
+  zoom 10: 3 rows done; 77/77 tiles, 0 failed, 0.00 GB, 1.4 min
+  zoom 11: 5 rows done; 192/192 tiles, 0 failed, 0.00 GB, 1.5 min
+  zoom 12: 9 rows done; 597/597 tiles, 0 failed, 0.00 GB, 2.4 min
+  zoom 13: 17 rows done; 2093/2093 tiles, 0 failed, 0.01 GB, 4.5 min
+  zoom 14: 32 rows done; 7725/7725 tiles, 0 failed, 0.05 GB, 11.5 min
+  zoom 15: 64 rows done; 30189/30189 tiles, 0 failed, 0.19 GB, 39.1 min
+  zoom 16: 127 rows done; 119343/119343 tiles, 0 failed, 0.74 GB, 147.7 min
+done: 119343 tiles, 0 failed, 0.74 GB
+-rw-r--r-- 1 runner runner 810139648 Oct 22 10:27 tasmania-satellit-z16-part1of6.mbtiles
