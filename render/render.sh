@@ -147,6 +147,7 @@ fi
 if [ -n "${LIST_TRACKS:-}" ]; then
   step "Importing LIST transport segments (variant $LIST_TRACKS)"
   bash "$HERE/list/import_list_transport.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
+  if [ "$LIST_TRACKS" = D ]; then bash "$HERE/list/list_roads.sh"; fi
 fi
 
 # ---------------------------------------------------------------- own walk data for the walks overlay (option)

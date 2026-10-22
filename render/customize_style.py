@@ -25,7 +25,8 @@ EARLY = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2] else 0
 TASVEG = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else 0
 # LIST_TRACKS (Tasmania, LIST Transport Segments): "A" = all tracks and paths from LIST instead of OSM,
 # "B" = walking tracks from LIST, vehicle tracks from OSM (OSM paths that LIST also has are left out),
-# "C" = all tracks and paths from LIST, plus the OSM tracks and paths that LIST does not have
+# "C" = all tracks and paths from LIST, plus the OSM tracks and paths that LIST does not have,
+# "D" = like C, and the roads from LIST too (render/list/list_roads.sh), OSM only for what LIST does not have
 LIST = (sys.argv[4] if len(sys.argv) > 4 else "").strip().upper()
 xml_path = mapnik_dir / "opentopomap.xml"
 xml = xml_path.read_text()
@@ -184,7 +185,8 @@ PATHLIKE = "highway IN ('path','footway','bridleway','steps','cycleway')"
 
 # OSM ways replaced by LIST data (option)
 OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND list_dup)",
-            "C": f"((highway = 'track' OR {PATHLIKE}) AND list_dup)"}.get(LIST, "false")
+            "C": f"((highway = 'track' OR {PATHLIKE}) AND list_dup)",
+            "D": f"((highway = 'track' OR {PATHLIKE}) AND list_dup)"}.get(LIST, "false")
 
 # ways without public access are taken out of OpenTopoMap's road layer and drawn light grey in an own layer;
 # paths not visible on the ground stay normal and get the label "nicht sichtbar"
@@ -240,7 +242,7 @@ def layer(name, styles, sql):
 insert = "\n".join([FADED_STYLE, layer("own-faded-ways", ["own-faded-ways"], FADED_SQL)])
 
 # ---------------------------------------------------------------- LIST Transport Segments (option)
-if LIST in ("A", "B", "C"):
+if LIST in ("A", "B", "C", "D"):
     # OSM names of the replaced ways are not written either
     rn_start = xml.index('<Layer name="road-names-text">')
     rn_end = xml.index("</Layer>", rn_start)
@@ -262,7 +264,7 @@ if LIST in ("A", "B", "C"):
     RESTR = "CASE WHEN user_type IN ('Restricted','Private') THEN 1 ELSE 0 END"
     LIST_SQL = one_line(f"""(SELECT way, {KIND} AS kind, {RESTR} AS restr, {SURF} AS surf, COALESCE(pri_name,'') AS name,
       trans_type, tran_class, CASE WHEN on_osm_track THEN 1 ELSE 0 END AS ontrack FROM list_transport) AS lt""")
-    lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST in ("A", "C") else [])
+    lines_kinds = ["walk", "walk4", "walk5", "route"] + (["vtrack"] if LIST in ("A", "C", "D") else [])
     DASH = {"walk": "1.1,2", "walk4": "1.1,2,1.1,6", "walk5": "1.1,6", "route": "1,8", "vtrack": None}
     ZOOMS = ([(12, 13, 0.7)] if EARLY else []) + [(14, 14, 0.9), (15, None, 1.0)]
     rules = []
@@ -478,7 +480,7 @@ OVERLAY_HEAD = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 # walks: all walking tracks highlighted; 60 Great Short Walks and big tree hikes in their own colours, with labels
-if LIST in ("A", "B", "C"):
+if LIST in ("A", "B", "C", "D"):
     WALK_SQL = one_line(f"""(SELECT way FROM list_transport WHERE trans_type = 'Track' OR (trans_type = 'Route' AND tran_class = 'Walking')
       UNION ALL SELECT way FROM planet_osm_line WHERE {PATHLIKE} AND NOT COALESCE(list_dup, false)) AS walks""")
 else:
