@@ -149,6 +149,12 @@ if [ -n "${LIST_TRACKS:-}" ]; then
   bash "$HERE/list/import_list_transport.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
 fi
 
+# ---------------------------------------------------------------- own walk data for the walks overlay (option)
+case " ${OVERLAYS:-} " in *" walks "*)
+  step "Importing walk data (overlay)"
+  bash "$HERE/data/import_walks.sh" ;;
+esac
+
 # ---------------------------------------------------------------- DEM
 step "Downloading Copernicus GLO-30 DEM"
 rm -rf "$WORK/dem-src"; mkdir -p "$WORK/dem-src"
@@ -345,6 +351,14 @@ else
     --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
 fi
 
+  # transparent overlays (MBTiles type=overlay), selectable in the app's map menu
+  [ "${MODE:-tiles}" = tiles ] && for ov in ${OVERLAYS:-}; do
+    step "Rendering overlay $ov"
+    python3 "$HERE/render_tiles.py" --shard "${SHARD:-0}" --shards "${SHARDS:-1}" --overlay \
+      --style "overlay-$ov.xml" --out "$OUT/$NAME-$ov$PART.mbtiles" \
+      --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$MAXZOOM" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
+      --name "$TITLE – $ov" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}"
+  done
 # example spots (TASVEG) for the check images of the workflow
 [ -f "$WORK/tasveg/sample_points.txt" ] && cp "$WORK/tasveg/sample_points.txt" "$OUT/samples-$NAME-otm.txt"
 ls -laR "$OUT"

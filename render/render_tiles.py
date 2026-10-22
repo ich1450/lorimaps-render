@@ -75,7 +75,10 @@ def render(tile):
         quality = int(_args.format.split(":")[1]) if ":" in _args.format else 85
         png = Image.open(io.BytesIO(im.tostring("png32")))
         buf = io.BytesIO()
-        png.convert("RGB").save(buf, "WEBP", quality=quality, method=5)
+        if _args.overlay:   # transparent layer: keep the alpha channel
+            png.convert("RGBA").save(buf, "WEBP", quality=quality, alpha_quality=90, method=5)
+        else:
+            png.convert("RGB").save(buf, "WEBP", quality=quality, method=5)
         return z, x, y, buf.getvalue(), None
     return z, x, y, im.tostring(_args.format), None
 
@@ -99,6 +102,7 @@ def main():
     p.add_argument("--maxzoom", type=int, default=16)
     p.add_argument("--scale", type=int, default=2)
     p.add_argument("--magnify", type=float, default=1.0, help="draw lines, symbols and labels this much larger")
+    p.add_argument("--overlay", action="store_true", help="transparent overlay (MBTiles type=overlay, tiles with alpha)")
     p.add_argument("--format", default="png8:m=h")
     p.add_argument("--name", default="map")
     p.add_argument("--processes", type=int, default=os.cpu_count())
@@ -137,7 +141,7 @@ def main():
     meta = {
         "name": args.name,
         "format": "webp" if args.format.startswith("webp") else "png",
-        "type": "baselayer",
+        "type": "overlay" if args.overlay else "baselayer",
         "version": "1",
         "description": f"OpenTopoMap style, {256 * args.scale} px tiles, magnify {args.magnify}",
         "attribution": "Kartendaten: © OpenStreetMap-Mitwirkende, Copernicus DEM (© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA)"

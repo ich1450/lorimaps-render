@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="6" height="6" viewBox="0 0 6 6">
+  <!-- walkability "Kein Durchkommen": dense cross hatching (rising to the right and to the left) -->
+  <g stroke="#4a1010" stroke-opacity="0.55" stroke-width="0.9" stroke-linecap="square">
+    <path d="M0,6 L6,0"/><path d="M-1,1 L1,-1"/><path d="M5,7 L7,5"/>
+    <path d="M0,0 L6,6"/><path d="M-1,5 L1,7"/><path d="M5,-1 L7,1"/>
+  </g>
+</svg>

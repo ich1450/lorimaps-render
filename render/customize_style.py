@@ -457,3 +457,65 @@ TOP = f"""<Style name="own-camps">
 xml = patch("</Map>", TOP + "</Map>", "camp sites and locked gates on top")
 
 xml_path.write_text(xml)
+
+# ---------------------------------------------------------------- overlays (transparent MBTiles, MBTiles type=overlay)
+OVERLAY_HEAD = """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE Map [
+	<!ENTITY % entities SYSTEM "inc/entities.xml.inc">
+	%entities;
+]>
+<Map srs="+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs +over" buffer-size="256">
+&fontset-settings;
+"""
+
+# walks: all walking tracks highlighted; 60 Great Short Walks and big tree hikes in their own colours, with labels
+if LIST in ("A", "B"):
+    WALK_SQL = one_line(f"""(SELECT way FROM list_transport WHERE trans_type = 'Track' OR (trans_type = 'Route' AND tran_class = 'Walking')
+      UNION ALL SELECT way FROM planet_osm_line WHERE {PATHLIKE} AND NOT COALESCE(list_dup, false)) AS walks""")
+else:
+    WALK_SQL = one_line(f"(SELECT way FROM planet_osm_line WHERE {PATHLIKE}) AS walks")
+GSW_SQL = one_line("""(SELECT way, nr, name, grade, nr || '  ' || name || '  · Grad ' || grade AS label FROM gsw_tracks) AS gsw""")
+GSW_START_SQL = one_line("""(SELECT DISTINCT ON (nr) ST_StartPoint(ST_GeometryN(way, 1)) AS way, nr FROM gsw_tracks ORDER BY nr, ST_Length(way) DESC) AS gsws""")
+BTH_SQL = "(SELECT way, name FROM bigtree_hikes) AS bth"
+GSW_COL, BTH_COL, WALK_COL = "#e8590c", "#7b2fa8", "#d6336c"
+walks_xml = OVERLAY_HEAD + f"""
+<Style name="ov-walks">
+<Rule>&maxscale_zoom10;&minscale_zoom12;<LineSymbolizer stroke="{WALK_COL}" stroke-width="2.5" stroke-opacity="0.45" stroke-linecap="round"/></Rule>
+<Rule>&maxscale_zoom13;<LineSymbolizer stroke="{WALK_COL}" stroke-width="4" stroke-opacity="0.4" stroke-linecap="round"/></Rule>
+</Style>
+<Style name="ov-bth">
+<Rule>&maxscale_zoom9;<LineSymbolizer stroke="{BTH_COL}" stroke-width="5" stroke-opacity="0.75" stroke-linecap="round" stroke-linejoin="round"/></Rule>
+<Rule>&maxscale_zoom12;<TextSymbolizer fontset-name="sans-condensed-bold" size="9" fill="{BTH_COL}" halo-radius="1.5" halo-fill="rgba(255,255,255,0.9)"
+ placement="line" spacing="400" repeat-distance="300" max-char-angle-delta="40" dy="9">[name]</TextSymbolizer></Rule>
+</Style>
+<Style name="ov-gsw">
+<Rule>&maxscale_zoom9;<LineSymbolizer stroke="{GSW_COL}" stroke-width="5" stroke-opacity="0.8" stroke-linecap="round" stroke-linejoin="round"/></Rule>
+<Rule>&maxscale_zoom12;<TextSymbolizer fontset-name="sans-condensed-bold" size="9" fill="{GSW_COL}" halo-radius="1.5" halo-fill="rgba(255,255,255,0.9)"
+ placement="line" spacing="400" repeat-distance="300" max-char-angle-delta="40" dy="9">[label]</TextSymbolizer></Rule>
+</Style>
+<Style name="ov-gsw-start">
+<Rule>&maxscale_zoom8;&minscale_zoom11;<MarkersSymbolizer fill="{GSW_COL}" stroke="#ffffff" stroke-width="1.5" width="14" height="14" allow-overlap="true"/>
+<TextSymbolizer fontset-name="sans-condensed-bold" size="8" fill="#ffffff" allow-overlap="true">[nr]</TextSymbolizer></Rule>
+<Rule>&maxscale_zoom12;<MarkersSymbolizer fill="{GSW_COL}" stroke="#ffffff" stroke-width="1.5" width="16" height="16" allow-overlap="true"/>
+<TextSymbolizer fontset-name="sans-condensed-bold" size="9" fill="#ffffff" allow-overlap="true">[nr]</TextSymbolizer></Rule>
+</Style>
+{layer("ov-walks", ["ov-walks"], WALK_SQL)}
+{layer("ov-bth", ["ov-bth"], BTH_SQL)}
+{layer("ov-gsw", ["ov-gsw"], GSW_SQL)}
+{layer("ov-gsw-start", ["ov-gsw-start"], GSW_START_SQL)}
+</Map>
+"""
+(mapnik_dir / "overlay-walks.xml").write_text(walks_xml)
+print("written: overlay-walks.xml")
+
+# walkability from the own TASVEG classification (Einteilung B): hatching
+if TASVEG:
+    walkability_xml = OVERLAY_HEAD + """
+<Style name="ov-walkability">
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 2</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_medium.svg" alignment="global"/></Rule>
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 3</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_hard.svg" alignment="global"/></Rule>
+<Rule>&maxscale_zoom10;<Filter>[cls_b] = 4</Filter><PolygonPatternSymbolizer file="symbols-otm/hatch_impassable.svg" alignment="global"/></Rule>
+</Style>
+""" + layer("ov-walkability", ["ov-walkability"], "(SELECT way, cls_b FROM tasveg WHERE cls_b >= 2) AS wb") + "\n</Map>\n"
+    (mapnik_dir / "overlay-walkability.xml").write_text(walkability_xml)
+    print("written: overlay-walkability.xml")
