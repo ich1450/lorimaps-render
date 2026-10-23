@@ -18,11 +18,13 @@ def tile(lat, lon, z):
 
 
 info = json.loads(get(BASE + "?f=json"))
+lods = (info.get("tileInfo") or {}).get("lods") or []
+z1 = min(z1, max((l["level"] for l in lods), default=z1))
 json.dump({k: info.get(k) for k in ("copyrightText", "description", "serviceDescription", "exportTilesAllowed",
-           "maxExportTilesCount", "minScale", "maxScale")}, open(f"{LOG}/{svc.replace('/', '_')}-info.json", "w"), indent=1)
+           "maxExportTilesCount", "minScale", "maxScale", "layers")}, open(f"{LOG}/{svc.replace('/', '_')}-info.json", "w"), indent=1)
 random.seed(2)
 # land points: random points in the bounding box of the main island, kept if the tile at zoom 8 is not sea-blue
-pts = [(random.uniform(-43.6, -40.7), random.uniform(144.7, 148.3)) for _ in range(160)]
+pts = [(random.uniform(-43.6, -40.7), random.uniform(144.7, 148.3)) for _ in range(100)]
 with open(f"{LOG}/tile_sizes.txt", "a") as fo:
     for z in range(z0, z1 + 1):
         sizes, missing, fmts = [], 0, {}
@@ -42,7 +44,7 @@ with open(f"{LOG}/tile_sizes.txt", "a") as fo:
         print(line, flush=True)
         fo.write(line + "\n")
 for name, lat, lon in (("cradle", -41.66, 145.95), ("hobart", -42.88, 147.32), ("tahune", -43.10, 146.72)):
-    for z in (12, 14, 15):
+    for z in (12, 14, 15, 16, 17):
         x, y = tile(lat, lon, z)
         try:
             d = get(f"{BASE}/tile/{z}/{y}/{x}")

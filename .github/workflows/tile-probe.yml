@@ -12,13 +12,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
-      SERVICE: Basemaps/ESgisMapBookPUBLIC
+      SERVICES: "Basemaps/Topographic Basemaps/TopographicGrayScale Basemaps/SimpleBasemap Basemaps/LabelsBasemap"
     steps:
       - uses: actions/checkout@v4
       - name: Probe
         run: |
           mkdir -p logs
-          python3 tools/probe_tiles.py "$SERVICE" 8 15 logs 2>&1 | tee logs/probe.log
+          for s in $SERVICES; do
+            mkdir -p "logs/${s#Basemaps/}"
+            python3 tools/probe_tiles.py "$s" 8 18 "logs/${s#Basemaps/}" 2>&1 | tee -a logs/probe.log
+          done
       - name: Publish logs
         if: always()
         env:
