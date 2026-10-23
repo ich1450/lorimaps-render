@@ -3,7 +3,9 @@
 (the service returns at most 2000 features per request), and writes one GeoJSONSeq file per layer
 (one feature per line, written as it comes: millions of contour lines do not fit in memory).
 Usage: prepare_list_data.py <out dir> <layer>:<name>:<fields> ...
-       e.g. 16:contours:ELEVATION 23:hydro_lines:HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME"""
+       e.g. 16:contours:ELEVATION 23:hydro_lines:HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME
+       optional 4th part: SQL where clause (e.g. to leave out the huge sea polygons).
+A cell that keeps failing (server error on very large geometries) is split into four smaller cells."""
 import json
 import sys
 import time
@@ -17,16 +19,16 @@ W, S, E, N = 143.5, -43.9, 148.6, -39.3     # Tasmania with King and Flinders Is
 STEP = 0.25
 
 
-def fetch_cell(args):
-    layer, fields, w, s, e, n = args
+def fetch_cell(args, depth=0):
+    layer, fields, where, w, s, e, n = args
     url = f"https://services.thelist.tas.gov.au/arcgis/rest/services/Public/OpenDataWFS/MapServer/{layer}/query"
     feats, offset = [], 0
     while True:
         q = urllib.parse.urlencode({
-            "where": "1=1", "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope", "inSR": 4326,
+            "where": where, "geometry": f"{w},{s},{e},{n}", "geometryType": "esriGeometryEnvelope", "inSR": 4326,
             "spatialRel": "esriSpatialRelIntersects", "outFields": "OBJECTID," + fields, "outSR": 4326,
             "orderByFields": "OBJECTID", "resultOffset": offset, "resultRecordCount": 2000, "f": "geojson"})
-        for attempt in range(8):
+        for attempt in range(4):
             try:
                 with urllib.request.urlopen(urllib.request.Request(url + "?" + q, headers=UA), timeout=300) as r:
                     page = json.load(r)
@@ -35,6 +37,13 @@ def fetch_cell(args):
                 print(f"retry layer {layer} cell {w},{s} offset {offset}: {ex}", flush=True)
                 time.sleep(10 * (attempt + 1))
         else:
+            if depth < 3:
+                print(f"splitting cell {w},{s} of layer {layer}", flush=True)
+                mx, my = (w + e) / 2, (s + n) / 2
+                out = []
+                for c in ((w, s, mx, my), (mx, s, e, my), (w, my, mx, n), (mx, my, e, n)):
+                    out += fetch_cell((layer, fields, where) + c, depth + 1)
+                return out
             raise SystemExit(f"ERROR: layer {layer} cell {w},{s} failed")
         part = page.get("features", [])
         feats += part
@@ -44,13 +53,15 @@ def fetch_cell(args):
 
 
 for spec in sys.argv[2:]:
-    layer, name, fields = spec.split(":")
+    parts = spec.split(":", 3)
+    layer, name, fields = parts[:3]
+    where = parts[3] if len(parts) > 3 else "1=1"
     cells = []
     x = W
     while x < E:
         y = S
         while y < N:
-            cells.append((layer, fields, round(x, 4), round(y, 4), round(min(x + STEP, E), 4), round(min(y + STEP, N), 4)))
+            cells.append((layer, fields, where, round(x, 4), round(y, 4), round(min(x + STEP, E), 4), round(min(y + STEP, N), 4)))
             y += STEP
         x += STEP
     t0 = time.time()

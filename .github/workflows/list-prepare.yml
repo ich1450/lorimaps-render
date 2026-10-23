@@ -24,7 +24,7 @@ jobs:
           set -o pipefail
           python3 tools/prepare_list_data.py data \
             "23:hydro_lines:HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME" \
-            "22:hydro_areas:HYDARTY1,HYDARTY2,HYD_CLASS,NAME,PERENNIAL" \
+            "22:hydro_areas:HYDARTY1,HYDARTY2,HYD_CLASS,NAME,PERENNIAL:HYDARTY1 IN ('Water Body','Watercourse','Estuary','Dam')" \
             "16:contours:ELEVATION" 2>&1 | tee logs/list-prepare.log
           cd data
           for n in hydro_lines hydro_areas contours; do
