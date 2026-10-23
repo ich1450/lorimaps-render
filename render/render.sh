@@ -397,10 +397,15 @@ else
   if [ -n "${JOB_START:-}" ]; then
     BASE_DEADLINE="--deadline $((JOB_START + 285 * 60))"; OV_DEADLINE="--deadline $((JOB_START + 330 * 60))"
   fi
+  # FILL_SKIP/FILL_LIMIT (fill.yml): only the tiles a run stopped by the time limit left out, no overlays
+  FILL_ARGS=""
+  if [ -n "${FILL_SKIP:-}" ]; then
+    FILL_ARGS="--skip $FILL_SKIP --limit ${FILL_LIMIT:-0}"; PART=".fill$SHARD-$FILL_SKIP"; OVERLAYS=""
+  fi
   python3 "$HERE/render_tiles.py" --shard "${SHARD:-0}" --shards "${SHARDS:-1}" \
     --style opentopomap.xml --out "$OUT/$NAME-otm$PART.mbtiles" \
     --bbox "$BBOX" --minzoom "$MINZOOM" --maxzoom "$MAXZOOM" --scale "$SCALE" --magnify "${MAGNIFY:-1}" \
-    --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}" $LAND_ARGS $BASE_DEADLINE
+    --name "$TITLE" --processes "$(nproc)" --format "${TILE_FORMAT:-png8:m=h}" $LAND_ARGS $BASE_DEADLINE $FILL_ARGS
 fi
 
   # transparent overlays (MBTiles type=overlay), selectable in the app's map menu

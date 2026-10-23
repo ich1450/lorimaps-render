@@ -121,6 +121,9 @@ def main():
     p.add_argument("--land-zoom", type=int, default=11)
     p.add_argument("--deadline", type=float, default=0, help="stop at this time (seconds since 1970) and keep "
                    "what is rendered so far (GitHub ends jobs after 6 hours and the whole result would be lost)")
+    p.add_argument("--skip", type=int, default=0, help="leave out the first SKIP tiles of the (shard's) list: "
+                   "fills in what a run stopped by --deadline left out (it logs after how many tiles it stopped)")
+    p.add_argument("--limit", type=int, default=0, help="render at most this many tiles (after --skip)")
     args = p.parse_args()
 
     register_fonts()
@@ -152,6 +155,10 @@ def main():
         # blocks of 8x8 tiles stay together (shared database pages and caches)
         tiles = [t for t in tiles if ((t[1] >> 3) * 7919 + (t[2] >> 3) * 104729 + t[0]) % args.shards == args.shard]
         print(f"shard {args.shard + 1}/{args.shards}", flush=True)
+    if args.skip or args.limit:
+        total = len(tiles)
+        tiles = tiles[args.skip:args.skip + args.limit] if args.limit else tiles[args.skip:]
+        print(f"fill: tiles {args.skip}-{args.skip + len(tiles)} of {total}", flush=True)
     print(f"{len(tiles)} tiles, zoom {args.minzoom}-{args.maxzoom}, {256 * args.scale} px, magnify {args.magnify}, {args.processes} processes", flush=True)
 
     if os.path.exists(args.out):
