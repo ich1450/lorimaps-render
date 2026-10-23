@@ -3,7 +3,7 @@
 #  1) Roads that LIST has are drawn with the LIST line (OSM road deleted). Road class for the look, route number
 #     and one-way come from the OSM road along it; LIST adds its class (Access Road), access and surface.
 #     Bridges and tunnels stay from OSM, the LIST road is cut there.
-#  2) LIST roads that OSM does not have at all are added; LIST roads where OSM only has a track or path are not
+#  2) LIST roads that OSM does not have at all are added (access roads then drawn like a track); LIST roads where OSM only has a track or path are not
 #     (the OSM track or path stays, as in variant C).
 #  3) LIST vehicular tracks replace OSM roads on the same line (the LIST track is drawn).
 #  4) LIST vehicular tracks along an OSM path/footway are not drawn (a footway stays a footway).
@@ -63,14 +63,15 @@ UPDATE list_road_ins l SET way = ST_Difference(l.way, (
 DELETE FROM planet_osm_line WHERE osm_id IN (SELECT osm_id FROM osm_road_dup);
 
 ALTER TABLE planet_osm_line ADD COLUMN IF NOT EXISTS list_class text, ADD COLUMN IF NOT EXISTS list_user text;
-INSERT INTO planet_osm_line (osm_id, highway, name, ref, surface, list_class, list_user, z_order, way)
-SELECT -(3000000000000 + row_number() OVER ()), hw, COALESCE(NULLIF(pri_name, ''), osm_name), osm_ref,
+-- access roads that OSM does not have at all (no road, no track): drawn like a track
+INSERT INTO planet_osm_line (osm_id, highway, tracktype, name, ref, surface, list_class, list_user, z_order, way)
+SELECT -(3000000000000 + row_number() OVER ()), hw, CASE WHEN hw = 'track' THEN 'grade2' END, COALESCE(NULLIF(pri_name, ''), osm_name), osm_ref,
        CASE surface_ty WHEN 'Sealed' THEN 'paved' WHEN 'Unsealed' THEN 'unpaved' WHEN '4WD required' THEN 'unpaved' END,
        tran_class, user_type,
-       CASE hw WHEN 'motorway' THEN 380 WHEN 'trunk' THEN 370 WHEN 'primary' THEN 360 WHEN 'secondary' THEN 350
+       CASE hw WHEN 'track' THEN 110 WHEN 'motorway' THEN 380 WHEN 'trunk' THEN 370 WHEN 'primary' THEN 360 WHEN 'secondary' THEN 350
                WHEN 'tertiary' THEN 340 WHEN 'service' THEN 150 ELSE 330 END,
        (ST_Dump(way)).geom
-  FROM (SELECT *, COALESCE(osm_highway, CASE tran_class
+  FROM (SELECT *, COALESCE(osm_highway, CASE WHEN tran_class = 'Access Road' THEN 'track' ELSE NULL END, CASE tran_class
           WHEN 'National/State Highway' THEN 'trunk' WHEN 'Arterial Road' THEN 'primary'
           WHEN 'Sub Arterial Road' THEN 'secondary' WHEN 'Collector Road' THEN 'tertiary'
           ELSE 'unclassified' END) AS hw FROM list_road_ins WHERE NOT ST_IsEmpty(way)) r;
