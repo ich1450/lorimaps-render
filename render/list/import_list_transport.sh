@@ -96,6 +96,17 @@ UPDATE planet_osm_line o SET list_dup = true
     AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 25)))
          FROM list_all l WHERE ST_DWithin(l.way, o.way, 25)) > 0.6 * ST_Length(o.way);
 -- LIST roads that OSM only has as a (kept) track: no "unsealed" dots there (there is no white road to put them in)
+-- LIST vehicular tracks that OSM already has as a road (e.g. Wallis Road): drawn by OSM as a road,
+-- not a second time as a (grey, private) track line on top of it
+ALTER TABLE list_transport ADD COLUMN IF NOT EXISTS on_osm_road boolean DEFAULT false;
+UPDATE list_transport l SET on_osm_road = true
+  WHERE l.tran_class = 'Vehicular Track' AND ST_Length(l.way) > 0
+    AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), 20)))
+         FROM planet_osm_line o
+         WHERE o.highway IN ('motorway','trunk','primary','secondary','tertiary','unclassified','residential',
+                             'living_street','service','road','motorway_link','trunk_link','primary_link',
+                             'secondary_link','tertiary_link')
+           AND ST_DWithin(o.way, l.way, 20)) > 0.6 * ST_Length(l.way);
 ALTER TABLE list_transport ADD COLUMN IF NOT EXISTS on_osm_track boolean DEFAULT false;
 UPDATE list_transport l SET on_osm_track = true
   WHERE l.trans_type = 'Road' AND l.tran_class <> 'Vehicular Track'

@@ -253,13 +253,14 @@ if LIST in ("A", "B", "C", "D"):
     rnl = patch(" ORDER BY (CASE WHEN highway IN ('motorway','trunk')", ") ORDER BY (CASE WHEN highway IN ('motorway','trunk')", "road names: close condition", rnl)
     xml = xml[:rn_start] + rnl + xml[rn_end:]
 
-    KIND = ("CASE WHEN tran_class = 'Vehicular Track' THEN 'vtrack' "
+    KIND = ("CASE WHEN tran_class = 'Vehicular Track' AND COALESCE(on_osm_road, false) THEN 'road' "
+            "WHEN tran_class = 'Vehicular Track' THEN 'vtrack' "
             "WHEN trans_type = 'Route' AND tran_class = 'Walking' THEN 'route' "
             "WHEN tran_class LIKE 'AS2156 Track Class 4%' THEN 'walk4' "
             "WHEN tran_class LIKE 'AS2156 Track Class 5%' OR tran_class LIKE 'AS2156 Track Class 6%' THEN 'walk5' "
             "WHEN trans_type = 'Track' THEN 'walk' ELSE 'road' END")
     SURF = ("CASE WHEN surface_ty = '4WD required' THEN 'nur 4WD' "
-            "WHEN surface_ty = 'Unsealed' AND tran_class = 'Vehicular Track' THEN '' "
+            "WHEN surface_ty = 'Unsealed' AND tran_class = 'Vehicular Track' AND NOT COALESCE(on_osm_road, false) THEN '' "
             "WHEN surface_ty = 'Unsealed' THEN 'unbefestigt' "
             "WHEN surface_ty = 'Sealed' AND tran_class = 'Vehicular Track' THEN 'asphaltiert' ELSE '' END")
     RESTR = "CASE WHEN user_type IN ('Restricted','Private') THEN 1 ELSE 0 END"
