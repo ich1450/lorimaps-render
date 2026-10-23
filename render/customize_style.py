@@ -184,6 +184,11 @@ NOACCESS = ("(foot IN ('no','private') OR (access IN ('no','private') "
 INVISIBLE = "trail_visibility IN ('no','horrible')"
 PATHLIKE = "highway IN ('path','footway','bridleway','steps','cycleway')"
 
+# LIST_PLUS: LIST road classes on OSM roads, missing LIST roads added, "privat" labels instead of grey ways
+LIST_PLUS = os.environ.get("LIST_PLUS", "0") == "1" and LIST in ("C", "D")
+ACCESS_SQL_COND = ("list_class = 'Access Road' AND highway NOT IN ('track','path','footway','bridleway','steps','cycleway') "
+                   "AND COALESCE(bridge, 'no') IN ('no', '') AND COALESCE(tunnel, 'no') IN ('no', '')")
+
 # OSM ways replaced by LIST data (option)
 OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND list_dup)",
             "C": f"((highway = 'track' OR {PATHLIKE}) AND list_dup)",
@@ -194,7 +199,11 @@ OSM_DROP = {"A": f"(highway = 'track' OR {PATHLIKE})", "B": f"({PATHLIKE} AND li
 start = xml.index('<Layer name="roads">')
 end = xml.index("</Layer>", start) + len("</Layer>")
 roads = xml[start:end]
-excl = f"NOT COALESCE(((highway = 'track' OR {PATHLIKE}) AND {NOACCESS}) OR {OSM_DROP}, false) AND ("
+if LIST_PLUS:
+    # ways without access are drawn normally (with a "privat" label); access roads get an own thinner style
+    excl = f"NOT COALESCE({OSM_DROP} OR ({ACCESS_SQL_COND}), false) AND ("
+else:
+    excl = f"NOT COALESCE(((highway = 'track' OR {PATHLIKE}) AND {NOACCESS}) OR {OSM_DROP}, false) AND ("
 roads = patch("FROM planet_osm_line WHERE ", "FROM planet_osm_line WHERE " + excl, "roads layer: exclude faded ways", roads)
 roads = patch(" ORDER BY (CASE WHEN highway IN ('motorway'", ") ORDER BY (CASE WHEN highway IN ('motorway'", "roads layer: close condition", roads)
 xml = xml[:start] + roads + xml[end:]
@@ -220,6 +229,14 @@ FADED_STYLE = f"""<Style name="own-faded-ways">
  placement="line" spacing="260" max-char-angle-delta="20" dy="-6">'4WD'</TextSymbolizer></Rule>
 </Style>"""
 
+if LIST_PLUS:
+    FADED_STYLE = FADED_STYLE.split('<Style name="own-invisible">')[1]
+    FADED_STYLE = f"""<Style name="own-faded-ways">
+<Rule>&maxscale_zoom{13 if EARLY else 14};
+<TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#7a1f1f" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
+ placement="line" spacing="300" max-char-angle-delta="30" dy="7">'privat'</TextSymbolizer></Rule>
+</Style>
+<Style name="own-invisible">""" + FADED_STYLE
 FADED_SQL = one_line(f"""(SELECT way, highway FROM planet_osm_line
   WHERE (highway = 'track' OR {PATHLIKE}) AND {NOACCESS} AND NOT COALESCE({OSM_DROP}, false)) AS fadedways""")
 INVISIBLE_SQL = one_line(f"""(SELECT way FROM planet_osm_line
@@ -253,7 +270,8 @@ if LIST in ("A", "B", "C", "D"):
     rnl = patch(" ORDER BY (CASE WHEN highway IN ('motorway','trunk')", ") ORDER BY (CASE WHEN highway IN ('motorway','trunk')", "road names: close condition", rnl)
     xml = xml[:rn_start] + rnl + xml[rn_end:]
 
-    KIND = ("CASE WHEN tran_class = 'Vehicular Track' AND COALESCE(on_osm_road, false) THEN 'road' "
+    KIND = (("CASE WHEN tran_class = 'Vehicular Track' AND COALESCE(on_osm_path, false) THEN 'none' " if LIST_PLUS else "CASE ") +
+            "WHEN tran_class = 'Vehicular Track' AND COALESCE(on_osm_road, false) THEN 'road' "
             "WHEN tran_class = 'Vehicular Track' THEN 'vtrack' "
             "WHEN trans_type = 'Route' AND tran_class = 'Walking' THEN 'route' "
             "WHEN tran_class LIKE 'AS2156 Track Class 4%' THEN 'walk4' "
@@ -275,7 +293,7 @@ if LIST in ("A", "B", "C", "D"):
             lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
             w = (1.4 if kind == "vtrack" else 1.0) * f
             d = f' stroke-dasharray="{DASH[kind]}"' if DASH[kind] else ""
-            for restr, col in ((0, "black"), (1, GREY)):
+            for restr, col in ((0, "black"), (1, "black" if LIST_PLUS else GREY)):
                 rules.append(f'<Rule>{lim}<Filter>[kind] = \'{kind}\' and [restr] = {restr}</Filter>'
                              f'<LineSymbolizer stroke="{col}" stroke-width="{w:.2f}"{d}/></Rule>')
     # unsealed roads: small grey dots inside the white road (instead of a label)
@@ -285,6 +303,16 @@ if LIST in ("A", "B", "C", "D"):
                      f'<LineSymbolizer stroke="#8a8a8a" stroke-width="{f:.2f}" stroke-linecap="round" '
                      f'stroke-dasharray="0.01,{3.2 * f:.1f}"/></Rule>')
     LIST_LINES = f'<Style name="own-list-lines">{"".join(rules)}</Style>'
+    if LIST_PLUS:
+        # LIST "Access Road" (forest and farm access roads): thinner than OpenTopoMap's minor roads, dashed edge
+        arules = []
+        for zf, zt, cw, fw in ((12, 12, 1.7, 0.9), (13, 13, 2.3, 1.3), (14, 14, 2.9, 1.8), (15, None, 3.5, 2.3)):
+            lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
+            arules.append(f'<Rule>{lim}<LineSymbolizer stroke="#6e6e6e" stroke-width="{cw}" stroke-dasharray="2.6,1.6"/>'
+                          f'<LineSymbolizer stroke="white" stroke-width="{fw}" stroke-linecap="round"/></Rule>')
+        ACCESS_SQL = one_line(f"(SELECT way FROM planet_osm_line WHERE {ACCESS_SQL_COND}) AS accessroads")
+        insert += ("\n" + f'<Style name="own-access-roads">{"".join(arules)}</Style>' + "\n"
+                   + layer("own-access-roads", ["own-access-roads"], ACCESS_SQL))
     insert += "\n" + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL)
 
     name_kinds = " or ".join(f"[kind] = '{k}'" for k in lines_kinds)
@@ -300,6 +328,17 @@ if LIST in ("A", "B", "C", "D"):
 </Style>"""
     LIST_TOP = LIST_LABELS + "\n" + layer("own-list-names", ["own-list-names"], LIST_SQL) + "\n" + \
         layer("own-list-surface", ["own-list-surface"], LIST_SQL) + "\n"
+    if LIST_PLUS:
+        # "privat" / "gesperrt" beside LIST roads and tracks without public access (instead of drawing them grey)
+        PRIV_SQL = one_line("""(SELECT way, CASE user_type WHEN 'Private' THEN 'privat' ELSE 'gesperrt' END AS acc
+          FROM list_transport WHERE user_type IN ('Private', 'Restricted') AND trans_type IN ('Road', 'Track')
+          AND NOT COALESCE(on_osm_path, false)) AS private""")
+        LIST_TOP += f"""<Style name="own-list-private">
+<Rule>&maxscale_zoom{13 if EARLY else 14};
+<TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#7a1f1f" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
+ placement="line" spacing="320" repeat-distance="260" max-char-angle-delta="30" dy="7">[acc]</TextSymbolizer></Rule>
+</Style>
+""" + layer("own-list-private", ["own-list-private"], PRIV_SQL) + "\n"
     print(f"patched: LIST transport segments, variant {LIST}")
 else:
     LIST_TOP = ""

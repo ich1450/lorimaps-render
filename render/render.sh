@@ -17,7 +17,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 USER="${USER:-$(id -un)}"   # not set in Docker
 source "$HERE/region.env"
 export TASVEG="${TASVEG:-0}"
-export OVERLAYS="${OVERLAYS:-}"   # with the walks overlay, giant trees and camp sites move from the map into it
+export OVERLAYS="${OVERLAYS:-}" LIST_PLUS="${LIST_PLUS:-0}"   # with the walks overlay, giant trees and camp sites move from the map into it
 WORK="${WORK:-$HOME/work}"
 OTM="$WORK/OpenTopoMap"
 DEM="$OTM/mapnik/dem"
@@ -149,6 +149,12 @@ if [ -n "${LIST_TRACKS:-}" ]; then
   step "Importing LIST transport segments (variant $LIST_TRACKS)"
   bash "$HERE/list/import_list_transport.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
   if [ "$LIST_TRACKS" = D ]; then bash "$HERE/list/list_roads.sh"; fi
+  if [ "${LIST_PLUS:-0}" = 1 ]; then bash "$HERE/list/list_plus.sh"; fi
+fi
+# rivers and lakes from LIST instead of OSM (option)
+if [ "${LIST_HYDRO:-0}" = 1 ]; then
+  step "Importing LIST rivers and lakes"
+  bash "$HERE/list/import_list_hydro.sh" "$WORK" "$BW" "$BS" "$BE" "$BN"
 fi
 
 # ---------------------------------------------------------------- own walk data for the walks overlay (option)
@@ -212,9 +218,17 @@ for f in hillshade-*.tif relief-*.tif; do
 done
 
 # contour lines every 10 m from the 30 m DEM, into database "contours", table "contours(way, ele)"
-gdal_contour -q -a ele -i 10 -f GPKG warp-30.tif "$WORK/contours.gpkg"
-ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/contours.gpkg" -nln contours -a_srs EPSG:3857 \
-  -lco GEOMETRY_NAME=way -nlt LINESTRING -explodecollections -overwrite
+if [ "${LIST_CONTOURS:-0}" = 1 ]; then
+  # Tasmania: the 10 m contours of theLIST (LIST Contours 10m, CC BY 3.0 AU, from a much finer elevation model)
+  python3 "$HERE/list/fetch_layer.py" 16 "$BW" "$BS" "$BE" "$BN" "$WORK/list_contours.geojson" "ELEVATION"
+  ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/list_contours.geojson" -nln contours \
+    -t_srs EPSG:3857 -lco GEOMETRY_NAME=way -nlt LINESTRING -explodecollections -overwrite -sql "SELECT ELEVATION AS ele FROM list_contours"
+  rm -f "$WORK/list_contours.geojson"
+else
+  gdal_contour -q -a ele -i 10 -f GPKG warp-30.tif "$WORK/contours.gpkg"
+  ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/contours.gpkg" -nln contours -a_srs EPSG:3857 \
+    -lco GEOMETRY_NAME=way -nlt LINESTRING -explodecollections -overwrite
+fi
 psql -q -d contours -c "ALTER TABLE contours ALTER COLUMN ele TYPE integer USING round(ele)::integer; DELETE FROM contours WHERE ST_Length(way) < 20;"
 # contour lines from gdal_contour are very long (whole mountain sides, 100 000+ points) and every tile
 # fetched them completely: 90-97 % of the render time. Split into pieces of at most 1000 points
