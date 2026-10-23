@@ -13,6 +13,12 @@
 set -euo pipefail
 psql -q -v ON_ERROR_STOP=1 -d gis <<'SQL'
 \set TOL 50
+-- sample points every 20 m along a (multi)line; "x % of a line lies within TOL of y" is the share of its points near y
+-- (index lookups only; buffering unions of many segments was far too slow for the whole state)
+CREATE OR REPLACE FUNCTION lp_pts(g geometry) RETURNS SETOF geometry LANGUAGE sql IMMUTABLE AS $$
+  SELECT ST_LineInterpolatePoint(d.geom, (i + 0.5) / k.n)
+    FROM ST_Dump(g) d, LATERAL (SELECT greatest(1, ceil(ST_Length(d.geom) / 20))::int AS n) k, generate_series(0, k.n - 1) i
+   WHERE ST_Length(d.geom) > 0 AND GeometryType(d.geom) = 'LINESTRING' $$;
 DROP TABLE IF EXISTS list_road, osm_road, list_road_ins;
 CREATE TABLE list_road AS
   SELECT row_number() OVER () AS id, tran_class, user_type, surface_ty, pri_name, (ST_Dump(way)).geom AS way
@@ -30,9 +36,8 @@ ANALYZE osm_road;
 -- OSM roads that a LIST road (or LIST vehicular track) covers for more than half of their length: replaced
 CREATE TEMP TABLE osm_road_dup AS
   SELECT o.osm_id FROM osm_road o
-   WHERE ST_Length(o.way) > 0
-     AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
-            FROM list_road l WHERE ST_DWithin(l.way, o.way, :TOL)) > 0.5 * ST_Length(o.way);
+   WHERE ST_Length(o.way) > 0 AND EXISTS (SELECT 1 FROM list_road l WHERE ST_DWithin(l.way, o.way, :TOL))
+     AND (SELECT avg((EXISTS (SELECT 1 FROM list_road l WHERE ST_DWithin(l.way, p, :TOL)))::int) FROM lp_pts(o.way) p) > 0.5;
 
 -- LIST roads to draw: all except vehicular tracks (drawn by the LIST layer) and roads where OSM only has a
 -- track or path (that one stays)
@@ -47,10 +52,9 @@ CREATE TABLE list_road_ins AS
     FROM list_road l WHERE l.tran_class <> 'Vehicular Track';
 DELETE FROM list_road_ins l
  WHERE l.osm_highway IS NULL
-   AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), :TOL)))
-          FROM planet_osm_line o
-         WHERE o.highway IN ('track','path','footway','bridleway','steps','cycleway') AND ST_DWithin(o.way, l.way, :TOL))
-       > 0.5 * ST_Length(l.way);
+   AND (SELECT avg((EXISTS (SELECT 1 FROM planet_osm_line o
+         WHERE o.highway IN ('track','path','footway','bridleway','steps','cycleway') AND ST_DWithin(o.way, p, :TOL)))::int)
+          FROM lp_pts(l.way) p) > 0.5;
 -- cut at OSM bridges and tunnels
 UPDATE list_road_ins l SET way = ST_Difference(l.way, (
     SELECT ST_Union(ST_Buffer(o.way, 15)) FROM planet_osm_line o
@@ -75,12 +79,13 @@ SELECT -(3000000000000 + row_number() OVER ()), hw, CASE WHEN hw = 'track' THEN 
           WHEN 'National/State Highway' THEN 'trunk' WHEN 'Arterial Road' THEN 'primary'
           WHEN 'Sub Arterial Road' THEN 'secondary' WHEN 'Collector Road' THEN 'tertiary'
           ELSE 'unclassified' END) AS hw FROM list_road_ins WHERE NOT ST_IsEmpty(way)) r;
+ANALYZE planet_osm_line;
 
 -- OSM tracks along a LIST road that is drawn anyway (matched to an OSM road elsewhere): not twice
 DELETE FROM planet_osm_line o
  WHERE o.highway = 'track' AND o.osm_id > 0 AND ST_Length(o.way) > 0
-   AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
-          FROM planet_osm_line l WHERE l.osm_id < -3000000000000 AND ST_DWithin(l.way, o.way, :TOL)) > 0.6 * ST_Length(o.way);
+   AND (SELECT avg((EXISTS (SELECT 1 FROM planet_osm_line l WHERE l.osm_id < -3000000000000 AND ST_DWithin(l.way, p, :TOL)))::int)
+          FROM lp_pts(o.way) p) > 0.6;
 
 -- OSM roads that stay (not in LIST): LIST class and access of a LIST road next to them, if any
 UPDATE planet_osm_line o SET (list_class, list_user) = (
@@ -99,15 +104,15 @@ UPDATE list_transport SET on_osm_road = false;
 ALTER TABLE list_transport ADD COLUMN IF NOT EXISTS on_osm_path boolean DEFAULT false;
 UPDATE list_transport l SET on_osm_path = true
   WHERE l.tran_class = 'Vehicular Track' AND ST_Length(l.way) > 0
-    AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), :TOL)))
-         FROM planet_osm_line o WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, l.way, :TOL))
-        > 0.6 * ST_Length(l.way);
+    AND EXISTS (SELECT 1 FROM planet_osm_line o WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, l.way, :TOL))
+    AND (SELECT avg((EXISTS (SELECT 1 FROM planet_osm_line o
+          WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, p, :TOL)))::int) FROM lp_pts(l.way) p) > 0.6;
 
 -- OSM tracks that LIST does not know at all (less than 30 % near any LIST segment): grade 3
 UPDATE planet_osm_line o SET tracktype = 'grade3'
   WHERE o.highway = 'track' AND NOT COALESCE(o.list_dup, false) AND ST_Length(o.way) > 0
-    AND COALESCE((SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
-                  FROM list_transport l WHERE ST_DWithin(l.way, o.way, :TOL)), 0) < 0.3 * ST_Length(o.way);
+    AND COALESCE((SELECT avg((EXISTS (SELECT 1 FROM list_transport l WHERE ST_DWithin(l.way, p, :TOL)))::int)
+                  FROM lp_pts(o.way) p), 0) < 0.3;
 ANALYZE planet_osm_line; ANALYZE list_transport;
 SQL
 psql -d gis -At -c "SELECT 'roads drawn with the LIST line: ' || count(*) || ', ' || round(sum(ST_Length(way)) * 0.73 / 1000) || ' km, classes: ' || string_agg(DISTINCT list_class, ', ') FROM planet_osm_line WHERE osm_id < -3000000000000;"
