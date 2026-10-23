@@ -1,0 +1,22 @@
+{
+ "copyrightText": "Creative Commons BY 3.0 AU \u00a9 State of Tasmania",
+ "description": "Tasmania Topographic base map",
+ "serviceDescription": "Tasmania Topographic base map. Different map scales used to represent the map. Created from vector data.For Services Terms and Conditions, please see the LIST Web Services Terms and Conditions (http://listdata.thelist.tas.gov.au/public/LISTWebServicesTermsConditions.pdf) ",
+ "exportTilesAllowed": true,
+ "maxExportTilesCount": 100000,
+ "minScale": 591657527.591555,
+ "maxScale": 2256.994353,
+ "layers": [
+  {
+   "id": 0,
+   "name": "Data Boundaries",
+   "parentLayerId": -1,
+   "defaultVisibility": true,
+   "subLayerIds": null,
+   "minScale": 30000000,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolygon"
+  }
+ ]
+}

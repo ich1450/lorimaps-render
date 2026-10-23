@@ -1,0 +1,22 @@
+{
+ "copyrightText": "Creative Commons BY 3.0 AU \u00a9 State of Tasmania",
+ "description": "Tasmania Simple Basemap",
+ "serviceDescription": "The Simple Basemap is a simple topographic map.\n\nDifferent map scales used to represent the map. Created from vector data.\n\nFor Services Terms and Conditions, please see the LIST Web Services Terms and Conditions (http://listdata.thelist.tas.gov.au/public/LISTWebServicesTermsConditions.pdf) ",
+ "exportTilesAllowed": false,
+ "maxExportTilesCount": null,
+ "minScale": 18489297.737236,
+ "maxScale": 2256.994353,
+ "layers": [
+  {
+   "id": 0,
+   "name": "Data Boundaries",
+   "parentLayerId": -1,
+   "defaultVisibility": false,
+   "subLayerIds": null,
+   "minScale": 30000000,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolygon"
+  }
+ ]
+}

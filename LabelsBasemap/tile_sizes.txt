@@ -1,0 +1,11 @@
+Basemaps/LabelsBasemap z8: 100 tiles, 0 missing, avg 11.3 KB, median 12.3 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z9: 100 tiles, 0 missing, avg 8.0 KB, median 7.8 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z10: 100 tiles, 0 missing, avg 9.0 KB, median 9.2 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z11: 100 tiles, 0 missing, avg 6.0 KB, median 5.5 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z12: 100 tiles, 0 missing, avg 5.2 KB, median 4.3 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z13: 100 tiles, 0 missing, avg 4.6 KB, median 3.7 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z14: 100 tiles, 0 missing, avg 3.3 KB, median 2.3 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z15: 100 tiles, 0 missing, avg 2.6 KB, median 1.6 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z16: 100 tiles, 0 missing, avg 1.5 KB, median 0.2 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z17: 100 tiles, 0 missing, avg 0.9 KB, median 0.2 KB, formats {'png': 100}
+Basemaps/LabelsBasemap z18: 100 tiles, 0 missing, avg 0.6 KB, median 0.2 KB, formats {'png': 100}

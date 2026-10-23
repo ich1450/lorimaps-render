@@ -1,0 +1,22 @@
+{
+ "copyrightText": "",
+ "description": "The Labels Basemap is a transparent map layer that emphasizes place name labels \u2014 such as cities, suburbs, and landmarks \u2014 while also showing roads for reference. It\u2019s typically used as an overlay on imagery to provide geographic context without obscuring the underlying aerial view.  Best placed as a layer over the top of the State Aerial Photo basemap, or the Hillshade basemaps.",
+ "serviceDescription": "The Labels Basemap is a transparent map layer that emphasizes place name labels \u2014 such as cities, suburbs, and landmarks \u2014 while also showing roads for reference. It\u2019s typically used as an overlay on imagery to provide geographic context without obscuring the underlying aerial view.  Best placed as a layer over the top of the State Aerial Photo basemap, or the Hillshade basemaps.",
+ "exportTilesAllowed": false,
+ "maxExportTilesCount": null,
+ "minScale": 36978595.474472,
+ "maxScale": 1128.497176,
+ "layers": [
+  {
+   "id": 0,
+   "name": "Data Boundaries",
+   "parentLayerId": -1,
+   "defaultVisibility": true,
+   "subLayerIds": null,
+   "minScale": 30000000,
+   "maxScale": 0,
+   "type": "Feature Layer",
+   "geometryType": "esriGeometryPolygon"
+  }
+ ]
+}

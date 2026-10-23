@@ -1,0 +1,11 @@
+Basemaps/Topographic z8: 100 tiles, 0 missing, avg 66.0 KB, median 78.1 KB, formats {'png': 100}
+Basemaps/Topographic z9: 100 tiles, 0 missing, avg 62.0 KB, median 67.1 KB, formats {'png': 100}
+Basemaps/Topographic z10: 100 tiles, 0 missing, avg 46.4 KB, median 49.5 KB, formats {'png': 100}
+Basemaps/Topographic z11: 100 tiles, 0 missing, avg 33.0 KB, median 35.8 KB, formats {'png': 100}
+Basemaps/Topographic z12: 100 tiles, 0 missing, avg 25.3 KB, median 29.5 KB, formats {'png': 100}
+Basemaps/Topographic z13: 100 tiles, 0 missing, avg 24.4 KB, median 28.0 KB, formats {'png': 100}
+Basemaps/Topographic z14: 100 tiles, 0 missing, avg 14.5 KB, median 13.4 KB, formats {'png': 100}
+Basemaps/Topographic z15: 100 tiles, 0 missing, avg 9.5 KB, median 9.1 KB, formats {'png': 100}
+Basemaps/Topographic z16: 100 tiles, 0 missing, avg 6.7 KB, median 5.8 KB, formats {'png': 100}
+Basemaps/Topographic z17: 100 tiles, 0 missing, avg 2.5 KB, median 2.5 KB, formats {'png': 100}
+Basemaps/Topographic z18: 100 tiles, 0 missing, avg 1.5 KB, median 1.5 KB, formats {'png': 100}
