@@ -13,6 +13,7 @@ instead of being silently skipped.
   5. camp sites: green symbol from zoom 11, name from zoom 13
   6. locked gates and barriers: red "no entry" disc from zoom 13
 """
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -444,7 +445,10 @@ BIG_TREES = f"""<Style name="own-big-trees">
 <Layer name="own-big-trees" srs="+proj=longlat +datum=WGS84 +no_defs"><StyleName>own-big-trees</StyleName><Datasource>
 <Parameter name="type">csv</Parameter><Parameter name="file">{trees_out}</Parameter></Datasource></Layer>
 """
-xml = patch("</Map>", BIG_TREES + "</Map>", "giant trees (golden stars)")
+# with the walks overlay the giant trees and camp sites are drawn there (switchable), not in the map
+POIS_IN_OVERLAY = "walks" in os.environ.get("OVERLAYS", "").split()
+if not POIS_IN_OVERLAY:
+    xml = patch("</Map>", BIG_TREES + "</Map>", "giant trees (golden stars)")
 
 # ---------------------------------------------------------------- 5+6) camp sites, locked gates (on top)
 # !bbox! inside both parts: otherwise every tile computes the points of all camp site areas of the region
@@ -453,16 +457,17 @@ CAMPS_SQL = one_line("""(SELECT way, name FROM planet_osm_point WHERE tourism = 
   WHERE tourism = 'camp_site' AND way && !bbox!) AS camps""")
 GATES_SQL = one_line("""(SELECT way FROM planet_osm_point
   WHERE barrier IN ('gate','lift_gate','swing_gate','chain','bar') AND locked = 'yes') AS lockedgates""")
-TOP = f"""<Style name="own-camps">
+CAMPS_STYLE = """<Style name="own-camps">
 <Rule>&maxscale_zoom11;&minscale_zoom12;<PointSymbolizer file="symbols-otm/camp_highlight.svg" transform="scale(0.75)" allow-overlap="true"/></Rule>
 <Rule>&maxscale_zoom13;<PointSymbolizer file="symbols-otm/camp_highlight.svg" allow-overlap="true"/>
 <TextSymbolizer fontset-name="sans-condensed-bold" size="10" fill="#1b7f3b" halo-radius="1.5" halo-fill="rgba(255,255,255,0.9)" dy="14" wrap-width="90">[name]</TextSymbolizer></Rule>
 </Style>
-<Style name="own-gates">
+"""
+TOP = f"""{"" if POIS_IN_OVERLAY else CAMPS_STYLE}<Style name="own-gates">
 <Rule>&maxscale_zoom13;&minscale_zoom14;<PointSymbolizer file="symbols-otm/gate_locked.svg" transform="scale(0.8)" allow-overlap="true"/></Rule>
 <Rule>&maxscale_zoom15;<PointSymbolizer file="symbols-otm/gate_locked.svg" allow-overlap="true"/></Rule>
 </Style>
-{layer("own-camps", ["own-camps"], CAMPS_SQL)}
+{"" if POIS_IN_OVERLAY else layer("own-camps", ["own-camps"], CAMPS_SQL)}
 {layer("own-gates", ["own-gates"], GATES_SQL)}
 {layer("own-4wd", ["own-4wd"], FOURWD_SQL) if not LIST else ""}
 {layer("own-invisible", ["own-invisible"], INVISIBLE_SQL)}
@@ -518,6 +523,8 @@ walks_xml = OVERLAY_HEAD + f"""
 {layer("ov-bth", ["ov-bth"], BTH_SQL)}
 {layer("ov-gsw", ["ov-gsw"], GSW_SQL)}
 {layer("ov-gsw-start", ["ov-gsw-start"], GSW_START_SQL)}
+{CAMPS_STYLE + layer("own-camps", ["own-camps"], CAMPS_SQL) if POIS_IN_OVERLAY else ""}
+{BIG_TREES if POIS_IN_OVERLAY else ""}
 </Map>
 """
 (mapnik_dir / "overlay-walks.xml").write_text(walks_xml)
