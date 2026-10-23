@@ -1,0 +1,26 @@
+name: Tile probe
+# Measures tile sizes of a LIST tile service (tools/probe_tiles.py); results in branch "tile-logs".
+on:
+  push:
+    branches: [main]
+    paths: ['tools/probe_tiles.py', '.github/workflows/tile-probe.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      SERVICE: Basemaps/ESgisMapBookPUBLIC
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        run: |
+          mkdir -p logs
+          python3 tools/probe_tiles.py "$SERVICE" 8 15 logs 2>&1 | tee logs/probe.log
+      - name: Publish logs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "tile-probe ${{ github.run_id }} ${{ job.status }}" tile-logs
