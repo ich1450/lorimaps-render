@@ -1,0 +1,48 @@
+name: Prepare LIST data
+# Downloads LIST contours (10 m), hydrographic lines and areas for all of Tasmania once and publishes them as
+# release "list-data" (list_<name>.gpkg.xz, EPSG:3857), so render jobs do not each load them from theLIST.
+on:
+  push:
+    branches: [main]
+    paths: ['tools/prepare_list_data.py', '.github/workflows/list-prepare.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Install
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin xz-utils
+      - name: Download and convert
+        run: |
+          mkdir -p logs data
+          set -o pipefail
+          python3 tools/prepare_list_data.py data \
+            "23:hydro_lines:HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME" \
+            "22:hydro_areas:HYDARTY1,HYDARTY2,HYD_CLASS,NAME,PERENNIAL" \
+            "16:contours:ELEVATION" 2>&1 | tee logs/list-prepare.log
+          cd data
+          for n in hydro_lines hydro_areas contours; do
+            ogr2ogr -f GPKG "list_$n.gpkg" "GeoJSONSeq:$n.geojsonl" -nln "$n" -t_srs EPSG:3857 -lco SPATIAL_INDEX=YES \
+              $( [ $n = hydro_areas ] && echo -makevalid ) 2>&1 | tail -3 | tee -a ../logs/list-prepare.log
+            rm "$n.geojsonl"
+            xz -T0 -6 "list_$n.gpkg"
+          done
+          ls -la | tee -a ../logs/list-prepare.log
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view list-data -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create list-data -R "$GITHUB_REPOSITORY" \
+            --latest=false -t "LIST data (contours, rivers, lakes)" -n "theLIST OpenDataWFS layers 16, 22, 23, © State of Tasmania, CC BY 3.0 AU"
+          gh release upload list-data data/*.gpkg.xz -R "$GITHUB_REPOSITORY" --clobber
+      - name: Publish log
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash render/push_logs.sh logs "list-prepare ${{ github.run_id }} ${{ job.status }}" list-logs
