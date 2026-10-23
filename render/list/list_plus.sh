@@ -7,7 +7,7 @@
 #     (the OSM track or path stays, as in variant C).
 #  3) LIST vehicular tracks replace OSM roads on the same line (the LIST track is drawn).
 #  4) LIST vehicular tracks along an OSM path/footway are not drawn (a footway stays a footway).
-#  5) OSM tracks that LIST does not know at all are drawn as track grade 5.
+#  5) OSM tracks that LIST does not know at all are drawn as track grade 3.
 # "Same line": within TOL Web Mercator metres (50 = about 36 m in Tasmania).
 # Runs after import_list_transport.sh.
 set -euo pipefail
@@ -102,8 +102,8 @@ UPDATE list_transport l SET on_osm_path = true
          FROM planet_osm_line o WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, l.way, :TOL))
         > 0.6 * ST_Length(l.way);
 
--- OSM tracks that LIST does not know at all (less than 30 % near any LIST segment): grade 5
-UPDATE planet_osm_line o SET tracktype = 'grade5'
+-- OSM tracks that LIST does not know at all (less than 30 % near any LIST segment): grade 3
+UPDATE planet_osm_line o SET tracktype = 'grade3'
   WHERE o.highway = 'track' AND NOT COALESCE(o.list_dup, false) AND ST_Length(o.way) > 0
     AND COALESCE((SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
                   FROM list_transport l WHERE ST_DWithin(l.way, o.way, :TOL)), 0) < 0.3 * ST_Length(o.way);
@@ -112,4 +112,4 @@ SQL
 psql -d gis -At -c "SELECT 'roads drawn with the LIST line: ' || count(*) || ', ' || round(sum(ST_Length(way)) * 0.73 / 1000) || ' km, classes: ' || string_agg(DISTINCT list_class, ', ') FROM planet_osm_line WHERE osm_id < -3000000000000;"
 psql -d gis -At -c "SELECT 'OSM roads kept (not in LIST): ' || count(*) FROM planet_osm_line WHERE osm_id > 0 AND highway IN ('primary','secondary','tertiary','unclassified','residential','service','road');"
 psql -d gis -At -c "SELECT 'LIST vehicular tracks kept as OSM footway: ' || count(*) FROM list_transport WHERE on_osm_path;"
-psql -d gis -At -c "SELECT 'OSM tracks not in LIST (drawn as grade 5): ' || count(*) FROM planet_osm_line WHERE highway = 'track' AND tracktype = 'grade5';"
+psql -d gis -At -c "SELECT 'OSM tracks drawn as grade 3: ' || count(*) FROM planet_osm_line WHERE highway = 'track' AND tracktype = 'grade3';"

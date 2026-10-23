@@ -232,7 +232,7 @@ FADED_STYLE = f"""<Style name="own-faded-ways">
 if LIST_PLUS:
     FADED_STYLE = FADED_STYLE.split('<Style name="own-invisible">')[1]
     FADED_STYLE = f"""<Style name="own-faded-ways">
-<Rule>&maxscale_zoom{13 if EARLY else 14};
+<Rule>&maxscale_zoom14;
 <TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#7a1f1f" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
  placement="line" spacing="300" max-char-angle-delta="30" dy="7">'privat'</TextSymbolizer></Rule>
 </Style>
@@ -297,23 +297,42 @@ if LIST in ("A", "B", "C", "D"):
                 rules.append(f'<Rule>{lim}<Filter>[kind] = \'{kind}\' and [restr] = {restr}</Filter>'
                              f'<LineSymbolizer stroke="{col}" stroke-width="{w:.2f}"{d}/></Rule>')
     # unsealed roads: small grey dots inside the white road (instead of a label)
+    dots = rules if not LIST_PLUS else []
     for zf, zt, f in ([(12, 13, 1.3)] if EARLY else []) + [(14, 14, 1.5), (15, None, 1.7)]:
         lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
-        rules.append(f"<Rule>{lim}<Filter>[kind] = 'road' and [surf] = 'unbefestigt' and [ontrack] = 0</Filter>"
+        dots.append(f"<Rule>{lim}<Filter>[kind] = 'road' and [surf] = 'unbefestigt' and [ontrack] = 0</Filter>"
                      f'<LineSymbolizer stroke="#8a8a8a" stroke-width="{f:.2f}" stroke-linecap="round" '
                      f'stroke-dasharray="0.01,{3.2 * f:.1f}"/></Rule>')
     LIST_LINES = f'<Style name="own-list-lines">{"".join(rules)}</Style>'
+    pre_insert = ""   # drawn before (below) OpenTopoMap's roads: bigger roads cover the ends of smaller ones
     if LIST_PLUS:
         # LIST "Access Road" (forest and farm access roads): thinner than OpenTopoMap's minor roads, dashed edge
         arules = []
-        for zf, zt, cw, fw in ((12, 12, 1.5, 0.8), (13, 13, 2.0, 1.15), (14, 14, 2.6, 1.6), (15, None, 3.1, 2.05)):
+        # zoom 12 (rule 11) and 13 (rule 12): thin black line like a track; from zoom 14 white with a black edge
+        arules = ['<Rule>&maxscale_zoom11;&minscale_zoom12;<LineSymbolizer stroke="black" stroke-width="0.55"/></Rule>']
+        for zf, zt, cw, fw in ((13, 13, 1.8, 1.0), (14, 14, 2.3, 1.45), (15, None, 2.8, 1.85)):
             lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
-            arules.append(f'<Rule>{lim}<LineSymbolizer stroke="#1a1a1a" stroke-width="{cw}" stroke-dasharray="2.6,1.6"/>'
+            arules.append(f'<Rule>{lim}<LineSymbolizer stroke="#1a1a1a" stroke-width="{cw}"/>'
                           f'<LineSymbolizer stroke="white" stroke-width="{fw}" stroke-linecap="round"/></Rule>')
         ACCESS_SQL = one_line(f"(SELECT way FROM planet_osm_line WHERE {ACCESS_SQL_COND}) AS accessroads")
-        insert += ("\n" + f'<Style name="own-access-roads">{"".join(arules)}</Style>' + "\n"
-                   + layer("own-access-roads", ["own-access-roads"], ACCESS_SQL))
-    insert += "\n" + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL)
+        # minor roads at zoom 12 (rule 11, OpenTopoMap draws them only from rule 12): thin black like tracks
+        MINOR_SQL = one_line("""(SELECT way FROM planet_osm_line WHERE highway IN ('unclassified','residential','road',
+          'living_street','service') AND NOT COALESCE(list_class = 'Access Road', false)) AS minorroads""")
+        pre_insert += ('<Style name="own-minor-z12"><Rule>&maxscale_zoom11;&minscale_zoom11;'
+                       '<LineSymbolizer stroke="black" stroke-width="0.5"/></Rule></Style>\n'
+                       + layer("own-minor-z12", ["own-minor-z12"], MINOR_SQL) + "\n"
+                       + f'<Style name="own-access-roads">{"".join(arules)}</Style>' + "\n"
+                       + layer("own-access-roads", ["own-access-roads"], ACCESS_SQL) + "\n"
+                       + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL) + "\n")
+        # dots: on LIST roads that are not access roads, without the first and last 20 m (no dots in the crossing road)
+        DOTS_SQL = one_line(f"""(SELECT ST_LineSubstring(g, 27 / ST_Length(g), 1 - 27 / ST_Length(g)) AS way,
+          'road' AS kind, 'unbefestigt' AS surf, 0 AS ontrack FROM (SELECT (ST_Dump(way)).geom AS g FROM list_transport
+          WHERE trans_type = 'Road' AND surface_ty = 'Unsealed' AND tran_class NOT IN ('Vehicular Track', 'Access Road')) t
+          WHERE ST_Length(g) > 60) AS listdots""")
+        insert += ("\n" + f'<Style name="own-list-dots">{"".join(dots)}</Style>' + "\n"
+                   + layer("own-list-dots", ["own-list-dots"], DOTS_SQL))
+    else:
+        insert += "\n" + LIST_LINES + "\n" + layer("own-list-lines", ["own-list-lines"], LIST_SQL)
 
     name_kinds = " or ".join(f"[kind] = '{k}'" for k in lines_kinds)
     LIST_LABELS = f"""<Style name="own-list-names">
@@ -322,7 +341,7 @@ if LIST in ("A", "B", "C", "D"):
  repeat-distance="300" spacing="300" placement="line" max-char-angle-delta="40">[name]</TextSymbolizer></Rule>
 </Style>
 <Style name="own-list-surface">
-<Rule>&maxscale_zoom{13 if EARLY else 14};<Filter>[surf] != '' and [surf] != 'unbefestigt'</Filter>
+<Rule>&maxscale_zoom{14 if LIST_PLUS else (13 if EARLY else 14)};<Filter>[surf] != '' and [surf] != 'unbefestigt'</Filter>
 <TextSymbolizer fontset-name="sans-condensed-bold" size="8" fill="#5a3a00" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
  placement="line" spacing="280" repeat-distance="200" max-char-angle-delta="25" dy="-6">[surf]</TextSymbolizer></Rule>
 </Style>"""
@@ -334,7 +353,7 @@ if LIST in ("A", "B", "C", "D"):
           FROM list_transport WHERE user_type IN ('Private', 'Restricted') AND trans_type IN ('Road', 'Track')
           AND NOT COALESCE(on_osm_path, false)) AS private""")
         LIST_TOP += f"""<Style name="own-list-private">
-<Rule>&maxscale_zoom{13 if EARLY else 14};
+<Rule>&maxscale_zoom14;
 <TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#7a1f1f" halo-radius="1.2" halo-fill="rgba(255,255,255,0.85)"
  placement="line" spacing="320" repeat-distance="260" max-char-angle-delta="30" dy="7">[acc]</TextSymbolizer></Rule>
 </Style>
@@ -342,8 +361,12 @@ if LIST in ("A", "B", "C", "D"):
     print(f"patched: LIST transport segments, variant {LIST}")
 else:
     LIST_TOP = ""
+    pre_insert = ""
 end = xml.index("</Layer>", xml.index('<Layer name="roads">')) + len("</Layer>")
 xml = xml[:end] + "\n" + insert + "\n" + xml[end:]
+if LIST in ("A", "B", "C", "D") and pre_insert:
+    rstart = xml.index('<Layer name="roads">')
+    xml = xml[:rstart] + pre_insert + xml[rstart:]
 
 # ---------------------------------------------------------------- LIST small streams (option LIST_HYDRO)
 # LIST has many times more streams than OSM: small ones thin and light blue from zoom 14 (as on theLIST),
@@ -351,16 +374,19 @@ xml = xml[:end] + "\n" + insert + "\n" + xml[end:]
 if os.environ.get("LIST_HYDRO", "0") == "1":
     zs = 1   # all maps are rendered with MAGNIFY=2
     STREAMS = f"""<Style name="own-list-streams">
-<Rule>&maxscale_zoom{14 - zs};&minscale_zoom{14 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="0.7"/></Rule>
-<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="1"/></Rule>
-<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_indef'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="0.8" stroke-dasharray="3,2"/></Rule>
+<Rule>&maxscale_zoom{14 - zs};&minscale_zoom{14 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#3d68f2" stroke-width="0.7"/></Rule>
+<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#3d68f2" stroke-width="1"/></Rule>
+<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_indef'</Filter><LineSymbolizer stroke="#3d68f2" stroke-width="0.8" stroke-dasharray="3,2"/></Rule>
 <Rule>&maxscale_zoom{15 - zs};<Filter>[name] != ''</Filter>
 <TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#4a7fbf" halo-radius="1" halo-fill="rgba(255,255,255,0.7)"
  placement="line" spacing="400" repeat-distance="300" max-char-angle-delta="30" dy="5">[name]</TextSymbolizer></Rule>
 </Style>
 """ + layer("own-list-streams", ["own-list-streams"],
             "(SELECT way, waterway, COALESCE(name, '') AS name FROM planet_osm_line WHERE waterway IN ('list_minor', 'list_indef')) AS liststreams")
-    rstart = xml.index('<Layer name="roads">')
+    # below the own road and track layers (if any), which are below OpenTopoMap's roads
+    rstart = xml.find('<Style name="own-minor-z12">')
+    if rstart < 0:
+        rstart = xml.index('<Layer name="roads">')
     xml = xml[:rstart] + STREAMS + "\n" + xml[rstart:]
     print("patched: LIST small streams")
 print("patched: faded-way layer")
