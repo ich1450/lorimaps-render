@@ -7,13 +7,10 @@
 set -euo pipefail
 WORK="$1"; W="$2"; S="$3"; E="$4"; N="$5"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-mkdir -p "$WORK/list" && cd "$WORK/list"
-python3 "$HERE/fetch_layer.py" 23 "$W" "$S" "$E" "$N" hydro_lines.geojson "HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME"
-python3 "$HERE/fetch_layer.py" 22 "$W" "$S" "$E" "$N" hydro_areas.geojson "HYDARTY1,HYDARTY2,HYD_CLASS,NAME,PERENNIAL"
-ogr2ogr -f PostgreSQL PG:dbname=gis hydro_lines.geojson -nln list_hydro_lines -overwrite -t_srs EPSG:3857 \
-  -lco GEOMETRY_NAME=way -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST
-ogr2ogr -f PostgreSQL PG:dbname=gis hydro_areas.geojson -nln list_hydro_areas -overwrite -t_srs EPSG:3857 \
-  -lco GEOMETRY_NAME=way -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -makevalid
+bash "$HERE/list_data.sh" "$WORK" "$W" "$S" "$E" "$N" hydro_lines 23 "HYDLNTY1,HYDLNTY2,HYD_CLASS,NAME" gis list_hydro_lines \
+  -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST
+bash "$HERE/list_data.sh" "$WORK" "$W" "$S" "$E" "$N" hydro_areas 22 "HYDARTY1,HYDARTY2,HYD_CLASS,NAME,PERENNIAL" gis list_hydro_areas \
+  -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -makevalid
 
 ENV="ST_Transform(ST_MakeEnvelope($W,$S,$E,$N,4326),3857)"
 psql -q -v ON_ERROR_STOP=1 -d gis <<SQL

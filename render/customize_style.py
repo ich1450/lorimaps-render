@@ -523,7 +523,7 @@ with open(here / "pois" / "tasmanien_baeume.csv", encoding="utf-8-sig") as f_in,
         lat, lon = (float(v) for v in r["Koordinaten"].split(","))
         w.writerow([r["Name"].strip(), lat, lon])
 BIG_TREES = f"""<Style name="own-big-trees">
-<Rule>&maxscale_zoom9;<PointSymbolizer file="symbols-otm/big_tree_star.svg" allow-overlap="true"/></Rule>
+<Rule>&maxscale_zoom8;<PointSymbolizer file="symbols-otm/big_tree_star.svg" allow-overlap="true"/></Rule>
 <Rule>&maxscale_zoom12;<TextSymbolizer fontset-name="sans-condensed-bold" size="9" fill="#5a3d00" halo-radius="1.5" halo-fill="rgba(255,255,255,0.85)"
  dy="11" wrap-width="80" allow-overlap="false">[name]</TextSymbolizer></Rule>
 </Style>

@@ -220,10 +220,8 @@ done
 # contour lines every 10 m from the 30 m DEM, into database "contours", table "contours(way, ele)"
 if [ "${LIST_CONTOURS:-0}" = 1 ]; then
   # Tasmania: the 10 m contours of theLIST (LIST Contours 10m, CC BY 3.0 AU, from a much finer elevation model)
-  python3 "$HERE/list/fetch_layer.py" 16 "$BW" "$BS" "$BE" "$BN" "$WORK/list_contours.geojson" "ELEVATION"
-  ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/list_contours.geojson" -nln contours \
-    -t_srs EPSG:3857 -lco GEOMETRY_NAME=way -nlt LINESTRING -explodecollections -overwrite -sql "SELECT ELEVATION AS ele FROM list_contours"
-  rm -f "$WORK/list_contours.geojson"
+  bash "$HERE/list/list_data.sh" "$WORK" "$BW" "$BS" "$BE" "$BN" contours 16 "ELEVATION" contours contours \
+    -nlt LINESTRING -explodecollections -dialect OGRSQL -sql "SELECT ELEVATION AS ele FROM contours"
 else
   gdal_contour -q -a ele -i 10 -f GPKG warp-30.tif "$WORK/contours.gpkg"
   ogr2ogr --config PG_USE_COPY YES -gt 100000 -f PostgreSQL PG:dbname=contours "$WORK/contours.gpkg" -nln contours -a_srs EPSG:3857 \
