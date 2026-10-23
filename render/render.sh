@@ -17,7 +17,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 USER="${USER:-$(id -un)}"   # not set in Docker
 source "$HERE/region.env"
 export TASVEG="${TASVEG:-0}"
-export OVERLAYS="${OVERLAYS:-}" LIST_PLUS="${LIST_PLUS:-0}"   # with the walks overlay, giant trees and camp sites move from the map into it
+export OVERLAYS="${OVERLAYS:-}" LIST_PLUS="${LIST_PLUS:-0}" LIST_HYDRO="${LIST_HYDRO:-0}"   # with the walks overlay, giant trees and camp sites move from the map into it
 WORK="${WORK:-$HOME/work}"
 OTM="$WORK/OpenTopoMap"
 DEM="$OTM/mapnik/dem"

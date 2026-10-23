@@ -344,6 +344,25 @@ else:
     LIST_TOP = ""
 end = xml.index("</Layer>", xml.index('<Layer name="roads">')) + len("</Layer>")
 xml = xml[:end] + "\n" + insert + "\n" + xml[end:]
+
+# ---------------------------------------------------------------- LIST small streams (option LIST_HYDRO)
+# LIST has many times more streams than OSM: small ones thin and light blue from zoom 14 (as on theLIST),
+# indefinite ones dashed from zoom 15 (rule zoom = shown zoom - 1 with MAGNIFY 2). Below the roads.
+if os.environ.get("LIST_HYDRO", "0") == "1":
+    zs = 1   # all maps are rendered with MAGNIFY=2
+    STREAMS = f"""<Style name="own-list-streams">
+<Rule>&maxscale_zoom{14 - zs};&minscale_zoom{14 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="0.7"/></Rule>
+<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_minor'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="1"/></Rule>
+<Rule>&maxscale_zoom{15 - zs};<Filter>[waterway] = 'list_indef'</Filter><LineSymbolizer stroke="#8fb8e6" stroke-width="0.8" stroke-dasharray="3,2"/></Rule>
+<Rule>&maxscale_zoom{15 - zs};<Filter>[name] != ''</Filter>
+<TextSymbolizer fontset-name="sans-condensed-oblique" size="8" fill="#4a7fbf" halo-radius="1" halo-fill="rgba(255,255,255,0.7)"
+ placement="line" spacing="400" repeat-distance="300" max-char-angle-delta="30" dy="5">[name]</TextSymbolizer></Rule>
+</Style>
+""" + layer("own-list-streams", ["own-list-streams"],
+            "(SELECT way, waterway, COALESCE(name, '') AS name FROM planet_osm_line WHERE waterway IN ('list_minor', 'list_indef')) AS liststreams")
+    rstart = xml.index('<Layer name="roads">')
+    xml = xml[:rstart] + STREAMS + "\n" + xml[rstart:]
+    print("patched: LIST small streams")
 print("patched: faded-way layer")
 
 # ---------------------------------------------------------------- public parking from zoom 14 (instead of 16)

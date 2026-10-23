@@ -28,6 +28,9 @@ SELECT -(2000000000000 + row_number() OVER ()),
        CASE WHEN hydlnty1 = 'Artificial Watercourse' THEN
               CASE WHEN hydlnty2 IN ('Canal','Water channel','Spillway','Flume') THEN 'canal' ELSE 'ditch' END
             WHEN hyd_class IN ('Major River','River','Minor River') THEN 'river'
+            -- indefinite / implied streams and the small streams get own, lighter styles (customize_style.py)
+            WHEN hydlnty2 IN ('Indefinite','Implied') THEN 'list_indef'
+            WHEN COALESCE(hyd_class, '') NOT IN ('Major Stream','Stream') THEN 'list_minor'
             ELSE 'stream' END,
        NULLIF(name, ''),
        CASE WHEN hydlnty2 IN ('Indefinite','Implied') THEN 'yes' END,
