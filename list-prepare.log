@@ -1,0 +1,49 @@
+layer 23 (hydro_lines): 1/399 cells, 1 features, 0.0 min
+layer 23 (hydro_lines): 41/399 cells, 39720 features, 0.5 min
+layer 23 (hydro_lines): 81/399 cells, 57918 features, 0.5 min
+layer 23 (hydro_lines): 121/399 cells, 129971 features, 0.7 min
+layer 23 (hydro_lines): 161/399 cells, 328831 features, 1.7 min
+layer 23 (hydro_lines): 201/399 cells, 586236 features, 2.4 min
+layer 23 (hydro_lines): 241/399 cells, 819147 features, 3.9 min
+layer 23 (hydro_lines): 281/399 cells, 1005949 features, 4.1 min
+layer 23 (hydro_lines): 321/399 cells, 1174948 features, 4.4 min
+layer 23 (hydro_lines): 361/399 cells, 1375694 features, 5.0 min
+layer 23 (hydro_lines): 1416579 features in 5.1 min
+layer 22 (hydro_areas): 1/399 cells, 0 features, 0.0 min
+layer 22 (hydro_areas): 41/399 cells, 3846 features, 0.1 min
+layer 22 (hydro_areas): 81/399 cells, 6514 features, 0.1 min
+layer 22 (hydro_areas): 121/399 cells, 9226 features, 0.2 min
+layer 22 (hydro_areas): 161/399 cells, 13765 features, 0.4 min
+layer 22 (hydro_areas): 201/399 cells, 36536 features, 0.7 min
+layer 22 (hydro_areas): 241/399 cells, 72682 features, 1.0 min
+layer 22 (hydro_areas): 281/399 cells, 99501 features, 1.1 min
+layer 22 (hydro_areas): 321/399 cells, 120507 features, 1.1 min
+layer 22 (hydro_areas): 361/399 cells, 133872 features, 1.3 min
+layer 22 (hydro_areas): 134814 features in 1.3 min
+layer 16 (contours): 1/399 cells, 0 features, 0.0 min
+layer 16 (contours): 41/399 cells, 3579 features, 0.1 min
+layer 16 (contours): 81/399 cells, 5105 features, 0.1 min
+layer 16 (contours): 121/399 cells, 16002 features, 0.5 min
+layer 16 (contours): 161/399 cells, 111656 features, 1.5 min
+layer 16 (contours): 201/399 cells, 256460 features, 2.7 min
+layer 16 (contours): 241/399 cells, 346497 features, 3.2 min
+layer 16 (contours): 281/399 cells, 407720 features, 4.2 min
+layer 16 (contours): 321/399 cells, 468071 features, 4.4 min
+retry layer 16 cell 148.0,-41.9 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.9 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.9 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.9 offset 0: HTTP Error 500: 
+splitting cell 148.0,-41.9 of layer 16
+retry layer 16 cell 148.0,-41.775 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.775 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.775 offset 0: HTTP Error 500: 
+retry layer 16 cell 148.0,-41.775 offset 0: HTTP Error 500: 
+splitting cell 148.0,-41.775 of layer 16
+layer 16 (contours): 361/399 cells, 522054 features, 10.4 min
+layer 16 (contours): 526857 features in 10.4 min
+total 932728
+drwxr-xr-x  2 runner runner      4096 Oct 23 13:00 .
+drwxr-xr-x 10 runner runner      4096 Oct 23 12:34 ..
+-rw-r--r--  1 runner runner 535287132 Oct 23 12:57 list_contours.gpkg.xz
+-rw-r--r--  1 runner runner  66719144 Oct 23 12:55 list_hydro_areas.gpkg.xz
+-rw-r--r--  1 runner runner 353086500 Oct 23 12:52 list_hydro_lines.gpkg.xz
