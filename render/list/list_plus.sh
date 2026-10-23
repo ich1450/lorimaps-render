@@ -1,66 +1,115 @@
 #!/usr/bin/env bash
-# LIST_PLUS (on top of variant C): as many roads and tracks as possible from both sources, nothing overwritten.
-#  1) OSM roads get the LIST road class and access of the LIST road next to them (list_class, list_user):
-#     "Access Road" is drawn thinner with a dashed edge, "Private" gets the label "privat".
-#  2) LIST roads that OSM does not have are added as roads (in their LIST class).
-#  3) LIST vehicular tracks along an OSM path/footway are not drawn (a footway stays a footway).
-#  4) OSM tracks that LIST does not know at all are drawn as track grade 5 (the most uncertain kind).
+# LIST_PLUS (on top of variant C): as many roads and tracks as possible from both sources, each drawn once.
+#  1) Roads that LIST has are drawn with the LIST line (OSM road deleted). Road class for the look, route number
+#     and one-way come from the OSM road along it; LIST adds its class (Access Road), access and surface.
+#     Bridges and tunnels stay from OSM, the LIST road is cut there.
+#  2) LIST roads that OSM does not have at all are added; LIST roads where OSM only has a track or path are not
+#     (the OSM track or path stays, as in variant C).
+#  3) LIST vehicular tracks replace OSM roads on the same line (the LIST track is drawn).
+#  4) LIST vehicular tracks along an OSM path/footway are not drawn (a footway stays a footway).
+#  5) OSM tracks that LIST does not know at all are drawn as track grade 5.
+# "Same line": within TOL Web Mercator metres (50 = about 36 m in Tasmania).
 # Runs after import_list_transport.sh.
 set -euo pipefail
 psql -q -v ON_ERROR_STOP=1 -d gis <<'SQL'
-DROP TABLE IF EXISTS list_road;
+\set TOL 50
+DROP TABLE IF EXISTS list_road, osm_road, list_road_ins;
 CREATE TABLE list_road AS
   SELECT row_number() OVER () AS id, tran_class, user_type, surface_ty, pri_name, (ST_Dump(way)).geom AS way
-    FROM list_transport WHERE trans_type = 'Road' AND tran_class NOT IN ('Vehicular Track', 'Not Applicable');
+    FROM list_transport WHERE trans_type = 'Road' AND tran_class NOT IN ('Not Applicable');
 CREATE INDEX ON list_road USING gist (way);
 ANALYZE list_road;
+CREATE TABLE osm_road AS
+  SELECT osm_id, highway, name, ref, oneway, way FROM planet_osm_line
+   WHERE highway IN ('motorway','trunk','primary','secondary','tertiary','unclassified','residential','living_street',
+                     'service','road','motorway_link','trunk_link','primary_link','secondary_link','tertiary_link')
+     AND COALESCE(bridge, 'no') IN ('no', '') AND COALESCE(tunnel, 'no') IN ('no', '');
+CREATE INDEX ON osm_road USING gist (way);
+ANALYZE osm_road;
 
--- 1) LIST class and access for OSM roads (the LIST road nearest to the middle of the OSM way)
+-- OSM roads that a LIST road (or LIST vehicular track) covers for more than half of their length: replaced
+CREATE TEMP TABLE osm_road_dup AS
+  SELECT o.osm_id FROM osm_road o
+   WHERE ST_Length(o.way) > 0
+     AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
+            FROM list_road l WHERE ST_DWithin(l.way, o.way, :TOL)) > 0.5 * ST_Length(o.way);
+
+-- LIST roads to draw: all except vehicular tracks (drawn by the LIST layer) and roads where OSM only has a
+-- track or path (that one stays)
+CREATE TABLE list_road_ins AS
+  SELECT l.*,
+         (SELECT o.highway FROM osm_road o WHERE ST_DWithin(o.way, ST_LineInterpolatePoint(l.way, 0.5), :TOL)
+            ORDER BY ST_Distance(o.way, ST_LineInterpolatePoint(l.way, 0.5)) LIMIT 1) AS osm_highway,
+         (SELECT o.ref FROM osm_road o WHERE ST_DWithin(o.way, ST_LineInterpolatePoint(l.way, 0.5), :TOL)
+            ORDER BY ST_Distance(o.way, ST_LineInterpolatePoint(l.way, 0.5)) LIMIT 1) AS osm_ref,
+         (SELECT o.name FROM osm_road o WHERE ST_DWithin(o.way, ST_LineInterpolatePoint(l.way, 0.5), :TOL)
+            ORDER BY ST_Distance(o.way, ST_LineInterpolatePoint(l.way, 0.5)) LIMIT 1) AS osm_name
+    FROM list_road l WHERE l.tran_class <> 'Vehicular Track';
+DELETE FROM list_road_ins l
+ WHERE l.osm_highway IS NULL
+   AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), :TOL)))
+          FROM planet_osm_line o
+         WHERE o.highway IN ('track','path','footway','bridleway','steps','cycleway') AND ST_DWithin(o.way, l.way, :TOL))
+       > 0.5 * ST_Length(l.way);
+-- cut at OSM bridges and tunnels
+UPDATE list_road_ins l SET way = ST_Difference(l.way, (
+    SELECT ST_Union(ST_Buffer(o.way, 15)) FROM planet_osm_line o
+     WHERE o.highway IS NOT NULL AND (COALESCE(o.bridge, 'no') NOT IN ('no', '') OR COALESCE(o.tunnel, 'no') NOT IN ('no', ''))
+       AND ST_DWithin(o.way, l.way, 15)))
+ WHERE EXISTS (SELECT 1 FROM planet_osm_line o
+     WHERE o.highway IS NOT NULL AND (COALESCE(o.bridge, 'no') NOT IN ('no', '') OR COALESCE(o.tunnel, 'no') NOT IN ('no', ''))
+       AND ST_DWithin(o.way, l.way, 15));
+
+DELETE FROM planet_osm_line WHERE osm_id IN (SELECT osm_id FROM osm_road_dup);
+
 ALTER TABLE planet_osm_line ADD COLUMN IF NOT EXISTS list_class text, ADD COLUMN IF NOT EXISTS list_user text;
+INSERT INTO planet_osm_line (osm_id, highway, name, ref, surface, list_class, list_user, z_order, way)
+SELECT -(3000000000000 + row_number() OVER ()), hw, COALESCE(NULLIF(pri_name, ''), osm_name), osm_ref,
+       CASE surface_ty WHEN 'Sealed' THEN 'paved' WHEN 'Unsealed' THEN 'unpaved' WHEN '4WD required' THEN 'unpaved' END,
+       tran_class, user_type,
+       CASE hw WHEN 'motorway' THEN 380 WHEN 'trunk' THEN 370 WHEN 'primary' THEN 360 WHEN 'secondary' THEN 350
+               WHEN 'tertiary' THEN 340 WHEN 'service' THEN 150 ELSE 330 END,
+       (ST_Dump(way)).geom
+  FROM (SELECT *, COALESCE(osm_highway, CASE tran_class
+          WHEN 'National/State Highway' THEN 'trunk' WHEN 'Arterial Road' THEN 'primary'
+          WHEN 'Sub Arterial Road' THEN 'secondary' WHEN 'Collector Road' THEN 'tertiary'
+          ELSE 'unclassified' END) AS hw FROM list_road_ins WHERE NOT ST_IsEmpty(way)) r;
+
+-- OSM tracks along a LIST road that is drawn anyway (matched to an OSM road elsewhere): not twice
+DELETE FROM planet_osm_line o
+ WHERE o.highway = 'track' AND o.osm_id > 0 AND ST_Length(o.way) > 0
+   AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
+          FROM planet_osm_line l WHERE l.osm_id < -3000000000000 AND ST_DWithin(l.way, o.way, :TOL)) > 0.6 * ST_Length(o.way);
+
+-- OSM roads that stay (not in LIST): LIST class and access of a LIST road next to them, if any
 UPDATE planet_osm_line o SET (list_class, list_user) = (
     SELECT l.tran_class, l.user_type FROM list_road l
-     WHERE ST_DWithin(l.way, ST_LineInterpolatePoint(o.way, 0.5), 20)
+     WHERE ST_DWithin(l.way, ST_LineInterpolatePoint(o.way, 0.5), :TOL) AND l.tran_class <> 'Vehicular Track'
      ORDER BY ST_Distance(l.way, ST_LineInterpolatePoint(o.way, 0.5)) LIMIT 1)
- WHERE o.highway IN ('motorway','trunk','primary','secondary','tertiary','unclassified','residential',
+ WHERE o.osm_id > 0 AND o.highway IN ('motorway','trunk','primary','secondary','tertiary','unclassified','residential',
                      'living_street','service','road','motorway_link','trunk_link','primary_link',
-                     'secondary_link','tertiary_link','track')
+                     'secondary_link','tertiary_link')
    AND GeometryType(o.way) = 'LINESTRING';
 
--- 2) LIST roads without any OSM way within 20 m: added (pieces of at least 40 m)
-DROP TABLE IF EXISTS list_road_new;
-CREATE TABLE list_road_new AS
-  SELECT l.id, l.tran_class, l.user_type, l.surface_ty, l.pri_name, (ST_Dump(
-           CASE WHEN b.g IS NULL THEN l.way ELSE ST_Difference(l.way, b.g) END)).geom AS way
-    FROM list_road l
-    LEFT JOIN LATERAL (SELECT ST_Union(ST_Buffer(o.way, 20)) AS g FROM planet_osm_line o
-                        WHERE o.highway IS NOT NULL AND ST_DWithin(o.way, l.way, 20)) b ON true;
-DELETE FROM list_road_new WHERE GeometryType(way) <> 'LINESTRING' OR ST_Length(way) * 0.73 < 40;
-INSERT INTO planet_osm_line (osm_id, highway, name, surface, list_class, list_user, z_order, way)
-SELECT -(3000000000000 + row_number() OVER ()),
-       CASE tran_class WHEN 'National/State Highway' THEN 'trunk' WHEN 'Arterial Road' THEN 'primary'
-                       WHEN 'Sub Arterial Road' THEN 'secondary' WHEN 'Collector Road' THEN 'tertiary'
-                       ELSE 'unclassified' END,
-       NULLIF(pri_name, ''),
-       CASE surface_ty WHEN 'Sealed' THEN 'paved' WHEN 'Unsealed' THEN 'unpaved' WHEN '4WD required' THEN 'unpaved' END,
-       tran_class, user_type, 330, way
-  FROM list_road_new;
+-- LIST vehicular tracks are drawn by the LIST layer, also where OSM had a road (deleted above)
+UPDATE list_transport SET on_osm_road = false;
 
--- 3) LIST vehicular tracks that OSM has as a path or footway: the footway wins
+-- LIST vehicular tracks that OSM has as a path or footway: the footway wins
 ALTER TABLE list_transport ADD COLUMN IF NOT EXISTS on_osm_path boolean DEFAULT false;
 UPDATE list_transport l SET on_osm_path = true
   WHERE l.tran_class = 'Vehicular Track' AND ST_Length(l.way) > 0
-    AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), 15)))
-         FROM planet_osm_line o WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, l.way, 15))
+    AND (SELECT ST_Length(ST_Intersection(l.way, ST_Buffer(ST_Collect(o.way), :TOL)))
+         FROM planet_osm_line o WHERE o.highway IN ('path','footway','bridleway','steps') AND ST_DWithin(o.way, l.way, :TOL))
         > 0.6 * ST_Length(l.way);
 
--- 4) OSM tracks that LIST does not know at all (less than 30 % near any LIST segment): grade 5
+-- OSM tracks that LIST does not know at all (less than 30 % near any LIST segment): grade 5
 UPDATE planet_osm_line o SET tracktype = 'grade5'
   WHERE o.highway = 'track' AND NOT COALESCE(o.list_dup, false) AND ST_Length(o.way) > 0
-    AND COALESCE((SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 25)))
-                  FROM list_transport l WHERE ST_DWithin(l.way, o.way, 25)), 0) < 0.3 * ST_Length(o.way);
+    AND COALESCE((SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), :TOL)))
+                  FROM list_transport l WHERE ST_DWithin(l.way, o.way, :TOL)), 0) < 0.3 * ST_Length(o.way);
 ANALYZE planet_osm_line; ANALYZE list_transport;
 SQL
-psql -d gis -At -c "SELECT 'OSM roads with LIST class: ' || string_agg(list_class || '/' || list_user || '=' || n, ', ') FROM (SELECT list_class, list_user, count(*) n FROM planet_osm_line WHERE list_class IS NOT NULL AND osm_id > 0 GROUP BY 1, 2 ORDER BY 3 DESC) t;"
-psql -d gis -At -c "SELECT 'LIST roads added (not in OSM): ' || count(*) || ', ' || round(sum(ST_Length(way)) * 0.73 / 1000) || ' km' FROM planet_osm_line WHERE osm_id < -3000000000000;"
+psql -d gis -At -c "SELECT 'roads drawn with the LIST line: ' || count(*) || ', ' || round(sum(ST_Length(way)) * 0.73 / 1000) || ' km, classes: ' || string_agg(DISTINCT list_class, ', ') FROM planet_osm_line WHERE osm_id < -3000000000000;"
+psql -d gis -At -c "SELECT 'OSM roads kept (not in LIST): ' || count(*) FROM planet_osm_line WHERE osm_id > 0 AND highway IN ('primary','secondary','tertiary','unclassified','residential','service','road');"
 psql -d gis -At -c "SELECT 'LIST vehicular tracks kept as OSM footway: ' || count(*) FROM list_transport WHERE on_osm_path;"
 psql -d gis -At -c "SELECT 'OSM tracks not in LIST (drawn as grade 5): ' || count(*) FROM planet_osm_line WHERE highway = 'track' AND tracktype = 'grade5';"

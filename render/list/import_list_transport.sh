@@ -82,8 +82,8 @@ ALTER TABLE planet_osm_line ADD COLUMN IF NOT EXISTS list_dup boolean DEFAULT fa
 UPDATE planet_osm_line o SET list_dup = true
   WHERE o.highway IN ('path','footway','bridleway','steps','cycleway')
     AND ST_Length(o.way) > 0
-    AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 20)))
-         FROM list_walk l WHERE ST_DWithin(l.way, o.way, 20)) > 0.6 * ST_Length(o.way);
+    AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 50)))
+         FROM list_walk l WHERE ST_DWithin(l.way, o.way, 50)) > 0.6 * ST_Length(o.way);
 -- OSM vehicle tracks that LIST has as a vehicular track or track (these LIST lines are drawn instead).
 -- LIST roads are not drawn (roads come from OSM), so an OSM track that LIST has as a road stays.
 DROP TABLE IF EXISTS list_all;
@@ -93,8 +93,8 @@ CREATE INDEX list_all_way ON list_all USING gist (way);
 UPDATE planet_osm_line o SET list_dup = true
   WHERE o.highway = 'track'
     AND ST_Length(o.way) > 0
-    AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 25)))
-         FROM list_all l WHERE ST_DWithin(l.way, o.way, 25)) > 0.6 * ST_Length(o.way);
+    AND (SELECT ST_Length(ST_Intersection(o.way, ST_Buffer(ST_Collect(l.way), 50)))
+         FROM list_all l WHERE ST_DWithin(l.way, o.way, 50)) > 0.6 * ST_Length(o.way);
 -- LIST roads that OSM only has as a (kept) track: no "unsealed" dots there (there is no white road to put them in)
 -- LIST vehicular tracks that OSM already has as a road (e.g. Wallis Road): drawn by OSM as a road,
 -- not a second time as a (grey, private) track line on top of it

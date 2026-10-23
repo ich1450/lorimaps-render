@@ -306,9 +306,9 @@ if LIST in ("A", "B", "C", "D"):
     if LIST_PLUS:
         # LIST "Access Road" (forest and farm access roads): thinner than OpenTopoMap's minor roads, dashed edge
         arules = []
-        for zf, zt, cw, fw in ((12, 12, 1.7, 0.9), (13, 13, 2.3, 1.3), (14, 14, 2.9, 1.8), (15, None, 3.5, 2.3)):
+        for zf, zt, cw, fw in ((12, 12, 1.5, 0.8), (13, 13, 2.0, 1.15), (14, 14, 2.6, 1.6), (15, None, 3.1, 2.05)):
             lim = f"&maxscale_zoom{zf};" + (f"&minscale_zoom{zt};" if zt else "")
-            arules.append(f'<Rule>{lim}<LineSymbolizer stroke="#6e6e6e" stroke-width="{cw}" stroke-dasharray="2.6,1.6"/>'
+            arules.append(f'<Rule>{lim}<LineSymbolizer stroke="#1a1a1a" stroke-width="{cw}" stroke-dasharray="2.6,1.6"/>'
                           f'<LineSymbolizer stroke="white" stroke-width="{fw}" stroke-linecap="round"/></Rule>')
         ACCESS_SQL = one_line(f"(SELECT way FROM planet_osm_line WHERE {ACCESS_SQL_COND}) AS accessroads")
         insert += ("\n" + f'<Style name="own-access-roads">{"".join(arules)}</Style>' + "\n"
