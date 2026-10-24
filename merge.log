@@ -1,0 +1,119 @@
+render jobs: success
+merging tasmania-z17-walkability: 40 of 40 parts
+merged parts/tasmania-z17-walkability.part0.mbtiles
+merged parts/tasmania-z17-walkability.part1.mbtiles
+merged parts/tasmania-z17-walkability.part10.mbtiles
+merged parts/tasmania-z17-walkability.part11.mbtiles
+merged parts/tasmania-z17-walkability.part12.mbtiles
+merged parts/tasmania-z17-walkability.part13.mbtiles
+merged parts/tasmania-z17-walkability.part14.mbtiles
+merged parts/tasmania-z17-walkability.part15.mbtiles
+merged parts/tasmania-z17-walkability.part16.mbtiles
+merged parts/tasmania-z17-walkability.part17.mbtiles
+merged parts/tasmania-z17-walkability.part18.mbtiles
+merged parts/tasmania-z17-walkability.part19.mbtiles
+merged parts/tasmania-z17-walkability.part2.mbtiles
+merged parts/tasmania-z17-walkability.part20.mbtiles
+merged parts/tasmania-z17-walkability.part21.mbtiles
+merged parts/tasmania-z17-walkability.part22.mbtiles
+merged parts/tasmania-z17-walkability.part23.mbtiles
+merged parts/tasmania-z17-walkability.part24.mbtiles
+merged parts/tasmania-z17-walkability.part25.mbtiles
+merged parts/tasmania-z17-walkability.part26.mbtiles
+merged parts/tasmania-z17-walkability.part27.mbtiles
+merged parts/tasmania-z17-walkability.part28.mbtiles
+merged parts/tasmania-z17-walkability.part29.mbtiles
+merged parts/tasmania-z17-walkability.part3.mbtiles
+merged parts/tasmania-z17-walkability.part30.mbtiles
+merged parts/tasmania-z17-walkability.part31.mbtiles
+merged parts/tasmania-z17-walkability.part32.mbtiles
+merged parts/tasmania-z17-walkability.part33.mbtiles
+merged parts/tasmania-z17-walkability.part34.mbtiles
+merged parts/tasmania-z17-walkability.part35.mbtiles
+merged parts/tasmania-z17-walkability.part36.mbtiles
+merged parts/tasmania-z17-walkability.part37.mbtiles
+merged parts/tasmania-z17-walkability.part38.mbtiles
+merged parts/tasmania-z17-walkability.part39.mbtiles
+merged parts/tasmania-z17-walkability.part4.mbtiles
+merged parts/tasmania-z17-walkability.part5.mbtiles
+merged parts/tasmania-z17-walkability.part6.mbtiles
+merged parts/tasmania-z17-walkability.part7.mbtiles
+merged parts/tasmania-z17-walkability.part8.mbtiles
+merged parts/tasmania-z17-walkability.part9.mbtiles
+out/tasmania-z17-walkability.mbtiles: 130474 tiles, 88615 unique images, 238.2 MB
+merging tasmania-z17-walks: 40 of 40 parts
+merged parts/tasmania-z17-walks.part0.mbtiles
+merged parts/tasmania-z17-walks.part1.mbtiles
+merged parts/tasmania-z17-walks.part10.mbtiles
+merged parts/tasmania-z17-walks.part11.mbtiles
+merged parts/tasmania-z17-walks.part12.mbtiles
+merged parts/tasmania-z17-walks.part13.mbtiles
+merged parts/tasmania-z17-walks.part14.mbtiles
+merged parts/tasmania-z17-walks.part15.mbtiles
+merged parts/tasmania-z17-walks.part16.mbtiles
+merged parts/tasmania-z17-walks.part17.mbtiles
+merged parts/tasmania-z17-walks.part18.mbtiles
+merged parts/tasmania-z17-walks.part19.mbtiles
+merged parts/tasmania-z17-walks.part2.mbtiles
+merged parts/tasmania-z17-walks.part20.mbtiles
+merged parts/tasmania-z17-walks.part21.mbtiles
+merged parts/tasmania-z17-walks.part22.mbtiles
+merged parts/tasmania-z17-walks.part23.mbtiles
+merged parts/tasmania-z17-walks.part24.mbtiles
+merged parts/tasmania-z17-walks.part25.mbtiles
+merged parts/tasmania-z17-walks.part26.mbtiles
+merged parts/tasmania-z17-walks.part27.mbtiles
+merged parts/tasmania-z17-walks.part28.mbtiles
+merged parts/tasmania-z17-walks.part29.mbtiles
+merged parts/tasmania-z17-walks.part3.mbtiles
+merged parts/tasmania-z17-walks.part30.mbtiles
+merged parts/tasmania-z17-walks.part31.mbtiles
+merged parts/tasmania-z17-walks.part32.mbtiles
+merged parts/tasmania-z17-walks.part33.mbtiles
+merged parts/tasmania-z17-walks.part34.mbtiles
+merged parts/tasmania-z17-walks.part35.mbtiles
+merged parts/tasmania-z17-walks.part36.mbtiles
+merged parts/tasmania-z17-walks.part37.mbtiles
+merged parts/tasmania-z17-walks.part38.mbtiles
+merged parts/tasmania-z17-walks.part39.mbtiles
+merged parts/tasmania-z17-walks.part4.mbtiles
+merged parts/tasmania-z17-walks.part5.mbtiles
+merged parts/tasmania-z17-walks.part6.mbtiles
+merged parts/tasmania-z17-walks.part7.mbtiles
+merged parts/tasmania-z17-walks.part8.mbtiles
+merged parts/tasmania-z17-walks.part9.mbtiles
+out/tasmania-z17-walks.mbtiles: 2081098 tiles, 62069 unique images, 257.7 MB
+tasmania-z17-otm: 40 shards, 22.49 GB -> 14 files
+  tasmania-z17-otm-part1of14.mbtiles: 1.63 GB
+  tasmania-z17-otm-part2of14.mbtiles: 1.66 GB
+  tasmania-z17-otm-part3of14.mbtiles: 1.61 GB
+  tasmania-z17-otm-part4of14.mbtiles: 1.66 GB
+  tasmania-z17-otm-part5of14.mbtiles: 1.72 GB
+  tasmania-z17-otm-part6of14.mbtiles: 1.74 GB
+  tasmania-z17-otm-part7of14.mbtiles: 1.74 GB
+  tasmania-z17-otm-part8of14.mbtiles: 1.72 GB
+  tasmania-z17-otm-part9of14.mbtiles: 1.74 GB
+  tasmania-z17-otm-part10of14.mbtiles: 1.66 GB
+  tasmania-z17-otm-part11of14.mbtiles: 1.73 GB
+  tasmania-z17-otm-part12of14.mbtiles: 1.68 GB
+  tasmania-z17-otm-part13of14.mbtiles: 1.66 GB
+  tasmania-z17-otm-part14of14.mbtiles: 0.56 GB
+total 22455280
+drwxr-xr-x 2 runner root         4096 Oct 24 01:37 .
+drwxr-xr-x 4 root   root         4096 Oct 24 01:30 ..
+-rw-r--r-- 1 runner runner 1661153280 Oct 24 01:35 tasmania-z17-otm-part10of14.mbtiles
+-rw-r--r-- 1 runner runner 1732956160 Oct 24 01:35 tasmania-z17-otm-part11of14.mbtiles
+-rw-r--r-- 1 runner runner 1681739776 Oct 24 01:36 tasmania-z17-otm-part12of14.mbtiles
+-rw-r--r-- 1 runner runner 1656209408 Oct 24 01:36 tasmania-z17-otm-part13of14.mbtiles
+-rw-r--r-- 1 runner runner  557010944 Oct 24 01:37 tasmania-z17-otm-part14of14.mbtiles
+-rw-r--r-- 1 runner runner 1632768000 Oct 24 01:31 tasmania-z17-otm-part1of14.mbtiles
+-rw-r--r-- 1 runner runner 1657360384 Oct 24 01:31 tasmania-z17-otm-part2of14.mbtiles
+-rw-r--r-- 1 runner runner 1605914624 Oct 24 01:32 tasmania-z17-otm-part3of14.mbtiles
+-rw-r--r-- 1 runner runner 1655812096 Oct 24 01:32 tasmania-z17-otm-part4of14.mbtiles
+-rw-r--r-- 1 runner runner 1718657024 Oct 24 01:33 tasmania-z17-otm-part5of14.mbtiles
+-rw-r--r-- 1 runner runner 1736704000 Oct 24 01:33 tasmania-z17-otm-part6of14.mbtiles
+-rw-r--r-- 1 runner runner 1744302080 Oct 24 01:34 tasmania-z17-otm-part7of14.mbtiles
+-rw-r--r-- 1 runner runner 1719881728 Oct 24 01:34 tasmania-z17-otm-part8of14.mbtiles
+-rw-r--r-- 1 runner runner 1737822208 Oct 24 01:35 tasmania-z17-otm-part9of14.mbtiles
+-rw-r--r-- 1 runner runner  238211072 Oct 24 01:30 tasmania-z17-walkability.mbtiles
+-rw-r--r-- 1 runner runner  257687552 Oct 24 01:30 tasmania-z17-walks.mbtiles
